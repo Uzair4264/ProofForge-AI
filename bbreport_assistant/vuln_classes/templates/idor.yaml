@@ -1,0 +1,114 @@
+vuln_class: idor
+display_name: "Insecure Direct Object Reference"
+cwe: CWE-639
+subtypes:
+  - read
+  - write
+  - delete
+
+required_fields:
+  - id: affected_endpoint
+    label: "Affected endpoint URL"
+    field_type: url
+    validation: valid_url
+    inference:
+      from_evidence: [http_request]
+      llm_prompt: "infer_endpoint_from_request"
+      confidence_threshold: 0.8
+    help:
+      short: "The endpoint that exposes another user's object"
+      long: |
+        The URL (with the object reference) that returns or modifies a resource
+        the authenticated user should not be able to access.
+      examples:
+        - "https://api.example.com/api/v1/invoices/1042"
+        - "https://api.example.com/users/8821/profile"
+
+  - id: object_identifier
+    label: "Object identifier"
+    field_type: string
+    validation: non_empty
+    inference:
+      from_evidence: [http_request]
+      llm_prompt: "infer_idor_identifier"
+      confidence_threshold: 0.75
+    help:
+      short: "The reference you manipulated (id, uuid, filename)"
+      long: |
+        The exact identifier you changed to access another user's resource, and
+        ideally its pattern (sequential integer, predictable, guessable UUID).
+      examples:
+        - "invoice_id=1042 (sequential integer)"
+        - "user=8821"
+
+  - id: authorization_mechanism
+    label: "Authorization mechanism"
+    field_type: choice
+    options: [none, broken_object_level, predictable_id, other]
+    inference:
+      from_evidence: [http_request, http_response]
+      llm_prompt: "infer_idor_authz"
+      confidence_threshold: 0.7
+    help:
+      short: "Why the access control fails"
+      long: |
+        - none: no authorization check at all on the object.
+        - broken_object_level: a check exists but doesn't verify ownership.
+        - predictable_id: references are guessable/enumerable.
+        - other: explain in the impact field.
+
+  - id: cross_account_proof
+    label: "Cross-account proof"
+    field_type: choice
+    options: [two_accounts, single_account, claimed]
+    inference:
+      from_evidence: [http_request, http_response]
+      llm_prompt: "infer_idor_cross_account"
+      confidence_threshold: 0.7
+    help:
+      short: "How strongly did you prove the data belongs to another user?"
+      long: |
+        - two_accounts: you demonstrated access across two distinct accounts (strongest).
+        - single_account: you accessed another object id from one account.
+        - claimed: you infer cross-user impact but did not demonstrate it.
+        Two-account proof is the gold standard for IDOR.
+
+  - id: impact_description
+    label: "Impact description"
+    field_type: long_text
+    editor: true
+    inference:
+      from_evidence: [http_request, http_response, screenshot]
+      llm_prompt: "draft_idor_impact"
+      confidence_threshold: 0.0
+      mode: suggest_only
+    help:
+      short: "What can an attacker access or change?"
+      long: |
+        Describe the data exposed or the action performed on another user's
+        resource, and the scale (one record vs. enumerable across all users).
+
+required_evidence:
+  - type: http_request
+    description: "Request accessing a resource owned by another user"
+    required: true
+  - type: http_response
+    description: "Response showing the other user's data"
+    required: true
+  - type: screenshot
+    description: "Evidence of the second account / authorization context"
+    required: false
+    note: "Two-account reproduction is strongly recommended"
+
+severity_hints:
+  default_cvss_v31: "AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+  notes: |
+    Common adjustments:
+    - I:H / A:H if the IDOR allows modifying or deleting other users' objects
+    - PR:N if the endpoint is reachable without authentication
+    - C:L if only limited/non-sensitive fields are exposed
+
+verifier_focus:
+  - "Confirm the two requests are made by (or for) different users"
+  - "Confirm the accessed data actually belongs to a different scope"
+  - "Flag impact claims of mass enumeration not backed by demonstrated access"

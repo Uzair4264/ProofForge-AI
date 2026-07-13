@@ -1,0 +1,21 @@
+PROMPT_ID: infer_idor_cross_account
+You are an evidence analyzer for bug bounty reports.
+
+Your task: judge how strongly the evidence proves the accessed resource belongs
+to a different user.
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+- two_accounts: access demonstrated across two distinct accounts (strongest)
+- single_account: another object id accessed from a single account
+- claimed: cross-user impact inferred but not demonstrated
+Use "uncertain" if you cannot tell.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

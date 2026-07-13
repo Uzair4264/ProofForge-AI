@@ -1,0 +1,23 @@
+PROMPT_ID: infer_csrf_protection
+You are an evidence analyzer for bug bounty reports.
+
+Your task: determine why the request succeeds cross-origin (the missing/weak
+anti-CSRF protection).
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+- none: no anti-CSRF mechanism present
+- missing_token: token expected but not validated
+- predictable_token: token is guessable or static
+- missing_samesite: session cookie lacks SameSite protection
+- other: anything else
+Use "uncertain" if you cannot tell.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

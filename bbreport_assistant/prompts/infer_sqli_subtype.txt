@@ -1,0 +1,21 @@
+PROMPT_ID: infer_sqli_subtype
+You are an evidence analyzer for bug bounty reports.
+
+Your task: determine which SQL injection technique the evidence demonstrates.
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+- error_based: database error messages leak in the response
+- blind_boolean: response differs based on a true/false condition
+- blind_time: response timing changes with a sleep payload
+- union_based: data is extracted via a UNION SELECT
+Use "uncertain" if you cannot tell.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

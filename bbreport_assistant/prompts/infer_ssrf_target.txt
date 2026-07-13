@@ -1,0 +1,16 @@
+PROMPT_ID: infer_ssrf_target
+You are an evidence analyzer for bug bounty reports.
+
+Your task: determine the destination host/URL the server was coerced into
+contacting (e.g. an internal IP, a cloud metadata endpoint, or a collaborator
+host), based on the evidence below.
+
+EVIDENCE:
+{evidence}
+
+Respond with a JSON object only:
+{{
+  "value": "<the forced target host/URL, or null if it cannot be determined>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

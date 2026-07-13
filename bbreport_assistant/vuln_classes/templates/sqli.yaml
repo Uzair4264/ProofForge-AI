@@ -1,0 +1,124 @@
+vuln_class: sqli
+display_name: "SQL Injection"
+cwe: CWE-89
+subtypes:
+  - error_based
+  - blind_boolean
+  - blind_time
+  - union_based
+
+required_fields:
+  - id: affected_endpoint
+    label: "Affected endpoint URL"
+    field_type: url
+    validation: valid_url
+    inference:
+      from_evidence: [http_request]
+      llm_prompt: "infer_endpoint_from_request"
+      confidence_threshold: 0.8
+    help:
+      short: "The endpoint containing the injection point"
+      long: |
+        The full URL where the injectable parameter lives.
+      examples:
+        - "https://api.example.com/products?id="
+        - "https://api.example.com/login"
+
+  - id: injection_point
+    label: "Injection point"
+    field_type: choice
+    options: [url_param, form_field, header, cookie, path, other]
+    inference:
+      from_evidence: [http_request]
+      llm_prompt: "infer_sqli_point"
+      confidence_threshold: 0.75
+    help:
+      short: "Where the SQL payload is injected"
+      long: |
+        Identify which part of the request carries the injection (query string
+        parameter, form field, header, cookie, or path segment).
+
+  - id: sqli_subtype
+    label: "SQLi technique"
+    field_type: choice
+    options: [error_based, blind_boolean, blind_time, union_based]
+    inference:
+      from_evidence: [http_request, http_response]
+      llm_prompt: "infer_sqli_subtype"
+      confidence_threshold: 0.7
+    help:
+      short: "Which SQLi technique did the evidence demonstrate?"
+      long: |
+        - error_based: database error messages leak in the response.
+        - blind_boolean: response differs based on a true/false condition.
+        - blind_time: response timing changes with a sleep payload.
+        - union_based: data is extracted via a UNION SELECT.
+
+  - id: database_fingerprint
+    label: "Database fingerprint"
+    field_type: string
+    inference:
+      from_evidence: [http_response]
+      llm_prompt: "infer_sqli_db"
+      confidence_threshold: 0.6
+    is_required: false
+    help:
+      short: "The DBMS, if identifiable (MySQL, Postgres, MSSQL, Oracle)"
+      long: |
+        Any signature that identifies the backend database (error string,
+        version() output, time-function behavior).
+
+  - id: impact_category
+    label: "Impact category"
+    field_type: choice
+    options: [data_extraction, auth_bypass, rce, other]
+    inference:
+      from_evidence: [http_request, http_response]
+      llm_prompt: "infer_sqli_impact"
+      confidence_threshold: 0.7
+    help:
+      short: "What the injection lets an attacker achieve"
+      long: |
+        - data_extraction: reading data the user shouldn't see.
+        - auth_bypass: logging in / escalating without valid credentials.
+        - rce: command execution via the database.
+        - other: explain in the impact field.
+
+  - id: impact_description
+    label: "Impact description"
+    field_type: long_text
+    editor: true
+    inference:
+      from_evidence: [http_request, http_response, screenshot]
+      llm_prompt: "draft_sqli_impact"
+      confidence_threshold: 0.0
+      mode: suggest_only
+    help:
+      short: "What can an attacker do with this SQLi?"
+      long: |
+        Describe the demonstrated impact and scope (which tables/data, whether
+        the whole database is reachable). Only claim what the evidence shows.
+
+required_evidence:
+  - type: http_request
+    description: "Request showing the injection payload"
+    required: true
+  - type: http_response
+    description: "Response demonstrating SQL behavior (error, conditional, timing, extracted data)"
+    required: true
+  - type: screenshot
+    description: "Screenshot of extracted data or timing difference"
+    required: false
+
+severity_hints:
+  default_cvss_v31: "AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+  notes: |
+    Common adjustments:
+    - PR:L/PR:H if authentication is required to reach the injection
+    - C:H/I:N/A:N for read-only blind extraction
+    - S:C if the DBMS allows reaching other components (e.g. RCE, file read)
+
+verifier_focus:
+  - "Confirm the response shows genuine database behavior, not a generic error"
+  - "Confirm extracted data is real, not merely echoed back from the input"
+  - "Flag auth-bypass / RCE claims not demonstrated by the evidence"

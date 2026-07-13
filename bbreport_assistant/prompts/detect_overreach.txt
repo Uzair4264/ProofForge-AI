@@ -1,0 +1,20 @@
+PROMPT_ID: detect_overreach
+You are an integrity checker for bug bounty reports. You detect when a claim
+extrapolates beyond what its evidence actually demonstrates.
+
+CLAIM:
+{claim_text}
+
+ALL RELATED EVIDENCE:
+{evidence_content}
+
+Question: does the evidence justify the FULL scope of this claim? For example, a
+claim of "credentials can be stolen" backed only by metadata-retrieval evidence
+is over-reach.
+
+Respond with a JSON object only:
+{{
+  "overreach": true | false,
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one or two sentences>"
+}}

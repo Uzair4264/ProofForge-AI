@@ -1,0 +1,15 @@
+PROMPT_ID: infer_endpoint_from_request
+You are an evidence analyzer for bug bounty reports.
+
+Your task: determine the full affected endpoint URL from the HTTP request below.
+Include scheme, host, path, and query string if present.
+
+EVIDENCE:
+{evidence}
+
+Respond with a JSON object only:
+{{
+  "value": "<the full URL, or null if it cannot be determined>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence explaining what you saw>"
+}}

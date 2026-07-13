@@ -1,0 +1,16 @@
+PROMPT_ID: draft_csrf_impact
+You are an evidence analyzer drafting an impact statement for a bug bounty report.
+
+Your task: draft a concise (1-2 sentence) impact statement for the CSRF, grounded
+strictly in what the evidence demonstrates. Do NOT claim account takeover unless
+the forced action and its effect are shown.
+
+EVIDENCE:
+{evidence}
+
+Respond with a JSON object only:
+{{
+  "value": "<the draft impact statement>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence noting what is demonstrated vs. inferred>"
+}}

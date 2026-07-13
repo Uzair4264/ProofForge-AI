@@ -1,0 +1,15 @@
+PROMPT_ID: infer_sqli_db
+You are an evidence analyzer for bug bounty reports.
+
+Your task: identify the backend database (DBMS) if the evidence reveals it
+(e.g. via an error string, version output, or behavior signature).
+
+EVIDENCE:
+{evidence}
+
+Respond with a JSON object only:
+{{
+  "value": "<the DBMS name, or null if not identifiable>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Runtime artifacts (should normally live in platformdirs locations, but ignore stray ones)
+*.jsonl
+report.md
+integrity_summary.json
+
+# Evidence and run outputs — never push real captures or generated reports
+evidence/
+examples/
+tests/
+
+# Personal docs — not part of the public repo
+linkedin.md
+resume.md
+PLUGIN.md
+PROJECT.md

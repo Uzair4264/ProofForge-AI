@@ -1,0 +1,17 @@
+PROMPT_ID: infer_sqli_point
+You are an evidence analyzer for bug bounty reports.
+
+Your task: determine where the SQL injection payload is injected in the request.
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+Use "uncertain" if you cannot determine with reasonable confidence.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

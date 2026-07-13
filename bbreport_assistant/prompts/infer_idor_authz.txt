@@ -1,0 +1,21 @@
+PROMPT_ID: infer_idor_authz
+You are an evidence analyzer for bug bounty reports.
+
+Your task: determine why the authorization control fails for this object access.
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+- none: no authorization check on the object
+- broken_object_level: a check exists but does not verify ownership
+- predictable_id: references are guessable/enumerable
+- other: anything else
+Use "uncertain" if you cannot tell.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

@@ -1,0 +1,112 @@
+vuln_class: ssrf
+display_name: "Server-Side Request Forgery"
+cwe: CWE-918
+subtypes:
+  - basic
+  - blind
+  - internal
+
+required_fields:
+  - id: affected_endpoint
+    label: "Affected endpoint URL"
+    field_type: url
+    validation: valid_url
+    inference:
+      from_evidence: [http_request]
+      llm_prompt: "infer_endpoint_from_request"
+      confidence_threshold: 0.8
+    help:
+      short: "The application endpoint that performs the server-side request"
+      long: |
+        The URL on the target application that you supply input to, which then
+        causes the server to make an outbound request.
+      examples:
+        - "https://api.example.com/fetch?url="
+        - "https://api.example.com/webhook/register"
+
+  - id: vulnerable_parameter
+    label: "Vulnerable parameter"
+    field_type: string
+    validation: non_empty
+    inference:
+      from_evidence: [http_request]
+      llm_prompt: "infer_ssrf_param"
+      confidence_threshold: 0.75
+    help:
+      short: "The request parameter whose value the server fetches"
+      long: |
+        Identify the exact parameter (query string, JSON body field, header)
+        whose value is used to build the server-side request.
+
+  - id: target_host
+    label: "Forced request target"
+    field_type: string
+    validation: non_empty
+    inference:
+      from_evidence: [http_request, http_response]
+      llm_prompt: "infer_ssrf_target"
+      confidence_threshold: 0.7
+    help:
+      short: "The host/URL you made the server request"
+      long: |
+        The destination you coerced the server into contacting — e.g. an
+        internal IP, a cloud metadata endpoint, or your own collaborator host.
+      examples:
+        - "http://169.254.169.254/latest/meta-data/"
+        - "http://127.0.0.1:6379/"
+        - "http://attacker.oast.example/"
+
+  - id: internal_reach
+    label: "Internal reach"
+    field_type: choice
+    options: [demonstrated, claimed, none]
+    inference:
+      from_evidence: [http_response]
+      llm_prompt: "infer_ssrf_internal_reach"
+      confidence_threshold: 0.7
+    help:
+      short: "Did you actually reach an internal/cloud resource?"
+      long: |
+        - demonstrated: the response or out-of-band evidence proves the server
+          contacted an internal/cloud resource.
+        - claimed: you believe internal reach is possible but have not proven it.
+        - none: only an external/benign fetch is shown.
+        Don't claim internal access you haven't demonstrated.
+
+  - id: impact_description
+    label: "Impact description"
+    field_type: long_text
+    editor: true
+    inference:
+      from_evidence: [http_request, http_response, screenshot]
+      llm_prompt: "draft_ssrf_impact"
+      confidence_threshold: 0.0
+      mode: suggest_only
+    help:
+      short: "What can an attacker do with this SSRF?"
+      long: |
+        Describe the demonstrated impact (e.g. read cloud metadata / credentials,
+        reach internal services, port-scan). Only claim what your evidence shows.
+
+required_evidence:
+  - type: http_request
+    description: "Request showing the SSRF trigger"
+    required: true
+  - type: http_response
+    description: "Response or out-of-band evidence of the server-side fetch"
+    required: false
+    note: "Blind SSRF should attach DNS/HTTP collaborator evidence"
+
+severity_hints:
+  default_cvss_v31: "AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N"
+  notes: |
+    Common adjustments:
+    - C:H/I:H if you read writable internal services or extract credentials
+    - PR:L/PR:H if authentication is required to reach the sink
+    - S:U if the fetch cannot cross a trust boundary
+    - Blind SSRF with no demonstrated internal reach is usually lower severity
+
+verifier_focus:
+  - "Confirm the response demonstrates a genuine server-side fetch, not a client-side request"
+  - "Confirm any 'internal access' claim is backed by actual evidence of internal reach"
+  - "Flag credential/metadata-theft claims not backed by retrieved data"

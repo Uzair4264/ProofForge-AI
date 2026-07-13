@@ -1,0 +1,55 @@
+program_id: "bugcrowd:generic"
+program_name: "Bugcrowd Generic Program"
+platform: "bugcrowd"
+last_updated: "2026-01-15"
+source_url: "https://docs.bugcrowd.com/"
+
+scope:
+  in_scope_assets: []
+  out_of_scope_assets: []
+  in_scope_vuln_types:
+    - "xss"
+    - "sqli"
+    - "ssrf"
+    - "idor"
+    - "csrf"
+    - "rce"
+    - "auth_bypass"
+  out_of_scope_vuln_types:
+    - "self_xss"
+    - "missing_security_headers_no_impact"
+    - "rate_limiting"
+
+required_fields:
+  - "vulnerability_title"
+  - "affected_endpoint"
+  - "vulnerability_description"
+  - "reproduction_steps"
+  - "impact_demonstration"
+  - "severity_rating"
+  - "remediation_suggestion"
+
+# Bugcrowd commonly uses VRT for prioritization; v0 computes CVSS and notes VRT later.
+severity_framework: "cvss_v3.1"
+severity_overrides: {}
+
+forbidden_content:
+  patterns:
+    - type: "regex"
+      pattern: "[0-9]{3}-[0-9]{2}-[0-9]{4}"
+      description: "Unredacted SSN"
+    - type: "regex"
+      pattern: "(?i)(password|api[_-]?key|secret)\\s*[=:]\\s*[\\w!@#$]+"
+      description: "Hardcoded secret in evidence"
+  llm_checks:
+    - "Does the report contain unredacted personally identifiable information of real users?"
+
+disclosure_rules:
+  embargo_days: 90
+  public_disclosure_requires_approval: true
+  must_include_disclosure_statement: false
+
+output_preferences:
+  format: "markdown_generic"
+  include_cvss_vector: true
+  include_screenshots: "inline"

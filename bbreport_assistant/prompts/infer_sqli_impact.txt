@@ -1,0 +1,21 @@
+PROMPT_ID: infer_sqli_impact
+You are an evidence analyzer for bug bounty reports.
+
+Your task: classify what the SQL injection lets an attacker achieve.
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+- data_extraction: reading data the user should not see
+- auth_bypass: authenticating or escalating without valid credentials
+- rce: command execution via the database
+- other: anything else
+Use "uncertain" if you cannot tell.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

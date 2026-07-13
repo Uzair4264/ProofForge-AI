@@ -1,0 +1,21 @@
+PROMPT_ID: infer_csrf_action
+You are an evidence analyzer for bug bounty reports.
+
+Your task: classify the security-sensitive action the request performs.
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+- account_modification: changes email, password, or settings
+- financial: moves money or makes purchases
+- state_change: any other server-side state change
+- other: anything else
+Use "uncertain" if you cannot tell.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

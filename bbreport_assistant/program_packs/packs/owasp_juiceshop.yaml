@@ -1,0 +1,57 @@
+program_id: "owasp:juice-shop"
+program_name: "OWASP Juice Shop (practice target)"
+platform: "owasp"
+last_updated: "2026-06-29"
+source_url: "https://owasp.org/www-project-juice-shop/"
+
+# OWASP Juice Shop is an intentionally vulnerable application published by OWASP
+# for security training. Testing it (locally or via the public demo) is authorized.
+scope:
+  in_scope_assets:
+    - "demo.owasp-juice.shop"
+    - "*.owasp-juice.shop"
+    - "localhost"
+    - "localhost:*"
+    - "127.0.0.1"
+    - "127.0.0.1:*"
+  out_of_scope_assets: []
+  in_scope_vuln_types:
+    - "xss"
+    - "sqli"
+    - "idor"
+    - "csrf"
+  out_of_scope_vuln_types:
+    - "self_xss"
+    - "rate_limiting"
+
+required_fields:
+  - "vulnerability_title"
+  - "affected_endpoint"
+  - "vulnerability_description"
+  - "reproduction_steps"
+  - "impact_demonstration"
+  - "severity_rating"
+
+severity_framework: "cvss_v3.1"
+severity_overrides: {}
+
+forbidden_content:
+  patterns:
+    - type: "regex"
+      pattern: "[0-9]{3}-[0-9]{2}-[0-9]{4}"
+      description: "Unredacted SSN"
+    - type: "regex"
+      pattern: "(?i)(password|api[_-]?key|secret)\\s*[=:]\\s*[\\w!@#$]+"
+      description: "Hardcoded secret in evidence"
+  llm_checks:
+    - "Does the report contain raw automated scanner output (Burp Scanner, Nuclei JSON dumps, etc.)?"
+
+disclosure_rules:
+  embargo_days: 0
+  public_disclosure_requires_approval: false
+  must_include_disclosure_statement: false
+
+output_preferences:
+  format: "markdown_generic"
+  include_cvss_vector: true
+  include_screenshots: "inline"

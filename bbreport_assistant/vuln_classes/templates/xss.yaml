@@ -1,0 +1,120 @@
+vuln_class: xss
+display_name: "Cross-Site Scripting"
+cwe: CWE-79
+subtypes:
+  - reflected
+  - stored
+  - dom_based
+
+required_fields:
+  - id: affected_endpoint
+    label: "Affected endpoint URL"
+    field_type: url
+    validation: valid_url
+    inference:
+      from_evidence: [http_request]
+      llm_prompt: "infer_endpoint_from_request"
+      confidence_threshold: 0.8
+    help:
+      short: "The URL where the XSS occurs"
+      long: |
+        Provide the full URL including the path and any query parameters.
+        Example: https://example.com/search?q=
+      examples:
+        - "https://example.com/search?q="
+        - "https://example.com/profile/edit"
+
+  - id: injection_vector
+    label: "Injection vector"
+    field_type: choice
+    options: [url_param, form_field, header, cookie, path, other]
+    inference:
+      from_evidence: [http_request, http_response]
+      llm_prompt: "infer_xss_vector"
+      confidence_threshold: 0.7
+    help:
+      short: "Where is the payload injected?"
+      long: |
+        XSS payloads can be injected via different parts of the request:
+        - url_param: a query string parameter (?q=payload)
+        - form_field: a form input value
+        - header: an HTTP header (User-Agent, Referer, etc.)
+        - cookie: a cookie value
+        - path: a path component (/foo/payload)
+
+  - id: payload
+    label: "Payload used"
+    field_type: string
+    validation: non_empty
+    inference:
+      from_evidence: [http_request, http_response]
+      llm_prompt: "extract_xss_payload"
+      confidence_threshold: 0.85
+
+  - id: rendering_context
+    label: "Rendering context"
+    field_type: choice
+    options: [html_body, html_attribute, script_block, style_block, url_context, other]
+    inference:
+      from_evidence: [http_response]
+      llm_prompt: "infer_xss_context"
+      confidence_threshold: 0.7
+    help:
+      short: "Where in the response is your payload rendered?"
+      long: |
+        XSS payloads execute differently depending on context:
+        - html_body: rendered between HTML tags (<div>payload</div>)
+        - html_attribute: rendered inside an attribute (<a href="payload">)
+        - script_block: rendered inside a <script> tag
+        - style_block: rendered inside a <style> tag
+        - url_context: rendered as a URL (href, src, etc.)
+        Don't guess — check the actual response.
+      examples:
+        - "Saw <div>my payload</div> in response -> html_body"
+        - "Saw <a href='my payload'> -> html_attribute"
+
+  - id: impact_description
+    label: "Impact description"
+    field_type: long_text
+    editor: true
+    inference:
+      from_evidence: [http_request, http_response, screenshot]
+      llm_prompt: "draft_xss_impact"
+      confidence_threshold: 0.0
+      mode: suggest_only
+    help:
+      short: "What can an attacker do with this XSS?"
+      long: |
+        Describe what an attacker achieves with this vulnerability.
+        Be specific to what your evidence demonstrates — don't claim
+        impacts you haven't proven.
+        Common XSS impacts:
+        - Session theft (only if HttpOnly is absent — demonstrate it)
+        - Phishing via injected content
+        - Actions on behalf of the user (only if shown in evidence)
+
+required_evidence:
+  - type: http_request
+    description: "Request demonstrating the injection"
+    required: true
+  - type: http_response
+    description: "Response showing the payload rendered"
+    required: true
+  - type: screenshot
+    description: "Screenshot of execution (alert, exfiltration, etc.)"
+    required: false
+    note: "Strongly recommended for visual proof"
+
+severity_hints:
+  default_cvss_v31: "AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
+  notes: |
+    Common adjustments:
+    - UI:N if no user interaction is required (rare for reflected XSS)
+    - PR:L or PR:H if authentication is needed to reach the injection
+    - S:U if the XSS does not break out of its origin scope
+    - C:H/I:H if you actually demonstrate session theft or account takeover
+
+verifier_focus:
+  - "Confirm the response actually contains the payload in an executable context"
+  - "Confirm the impact claim matches the demonstrated execution"
+  - "Flag if impact claims session theft without a cookie-exfiltration PoC"
