@@ -104,6 +104,42 @@ def base_score(vector: str) -> SeverityResult:
     return SeverityResult(vector=normalized, score=score, rating=rating_for(score))
 
 
+# Metric values from least to most severe.
+_SEVERITY_ORDER = {
+    "AV": ["P", "L", "A", "N"],
+    "AC": ["H", "L"],
+    "PR": ["H", "L", "N"],
+    "UI": ["R", "N"],
+    "S": ["U", "C"],
+    "C": ["N", "L", "H"],
+    "I": ["N", "L", "H"],
+    "A": ["N", "L", "H"],
+}
+
+
+def escalations(claimed: str, baseline: str) -> list[str]:
+    """Metrics where ``claimed`` is more severe than ``baseline``, as "C:L->H"."""
+    c, b = parse_vector(claimed), parse_vector(baseline)
+    out = []
+    for metric in _REQUIRED:
+        order = _SEVERITY_ORDER[metric]
+        if c[metric] not in order or b[metric] not in order:
+            raise SeverityError(f"Unknown metric value for {metric}")
+        if order.index(c[metric]) > order.index(b[metric]):
+            out.append(f"{metric}:{b[metric]}->{c[metric]}")
+    return out
+
+
+def cap_vector(claimed: str, ceiling: str) -> str:
+    """``claimed`` with every metric lowered to at most ``ceiling``'s severity."""
+    c, ceil = parse_vector(claimed), parse_vector(ceiling)
+    capped = {}
+    for metric in _REQUIRED:
+        order = _SEVERITY_ORDER[metric]
+        capped[metric] = min(c[metric], ceil[metric], key=order.index)
+    return "/".join(f"{k}:{capped[k]}" for k in _REQUIRED)
+
+
 class CVSSv31(SeverityFramework):
     id = "cvss_v3.1"
 

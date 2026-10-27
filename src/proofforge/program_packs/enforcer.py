@@ -199,9 +199,56 @@ def check_severity(report: Report, pack: RulePack) -> CheckResult:
             ),
             details={"recomputed": result.score, "rating": result.rating},
         )
+
+    # Evidence-derived ceiling: the class's default vector, unless the impact is
+    # demonstrated. Every template's severity notes say to go above the default
+    # only when the evidence shows it.
+    ceiling = _default_vector(report.vuln_class)
+    if ceiling is None:
+        return CheckResult(
+            name="severity", status="warn",
+            message=f"Severity {result.score} ({result.rating}) recomputed, but no class default "
+                    f"vector to compare it against.",
+        )
+    try:
+        raised = cvss_v31.escalations(result.vector, ceiling)
+    except Exception as exc:  # noqa: BLE001
+        return CheckResult(name="severity", status="warn", message=f"Severity vector invalid: {exc}")
+    if raised and not _impact_demonstrated(report):
+        capped = cvss_v31.base_score(cvss_v31.cap_vector(result.vector, ceiling))
+        return CheckResult(
+            name="severity", status="warn",
+            message=(
+                f"Claimed {result.score} ({result.rating}) is above the {report.vuln_class} default "
+                f"on {', '.join(raised)}, but no impact is marked demonstrated with linked evidence. "
+                f"Demonstrate it, or use {capped.vector} ({capped.score} {capped.rating})."
+            ),
+            details={"escalations": raised, "ceiling": ceiling,
+                     "suggested_vector": capped.vector, "suggested_score": capped.score},
+        )
+    justified = f"; above the class default on {', '.join(raised)}, backed by demonstrated impact" if raised else ""
     return CheckResult(
         name="severity", status="pass",
-        message=f"Severity {result.score} ({result.rating}) validated against {pack.severity_framework}.",
+        message=f"Severity {result.score} ({result.rating}) validated against {pack.severity_framework}{justified}.",
+        details={"escalations": raised},
+    )
+
+
+def _default_vector(vuln_class: str) -> str | None:
+    from ..core.exceptions import BBReportError
+    from ..vuln_classes.loader import get_template
+
+    try:
+        hints = get_template(vuln_class).severity_hints
+    except BBReportError:
+        return None
+    return hints.default_cvss_v31 if hints else None
+
+
+def _impact_demonstrated(report: Report) -> bool:
+    return any(
+        c.category.value == "impact_assertion" and c.basis == "demonstrated" and c.evidence_ids
+        for c in report.claims
     )
 
 
