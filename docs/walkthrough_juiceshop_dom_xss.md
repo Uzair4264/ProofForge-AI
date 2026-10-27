@@ -92,17 +92,17 @@ screenshot of the alert is the primary proof.
 
 ```powershell
 # 1. Start a session against the Juice Shop program pack
-bbreport init --program owasp:juice-shop
+proofforge init --program owasp:juice-shop
 
 # 2. Register the evidence (run from your capture folder)
-bbreport evidence add -f request.txt    -t http_request
-bbreport evidence add -f response.txt   -t http_response
-bbreport evidence add -f screenshot.png -t screenshot
-bbreport evidence add -f repro.md       -t repro_steps
-bbreport evidence list
+proofforge evidence add -f request.txt    -t http_request
+proofforge evidence add -f response.txt   -t http_response
+proofforge evidence add -f screenshot.png -t screenshot
+proofforge evidence add -f repro.md       -t repro_steps
+proofforge evidence list
 
 # 3. Build the report — the live model infers fields from your evidence
-bbreport report new --vuln-class xss --subtype dom_based
+proofforge report new --vuln-class xss --subtype dom_based
 ```
 
 During `report new` the inference engine pre-fills what it can (affected endpoint,
@@ -116,24 +116,24 @@ injection vector, payload) and presents them for confirmation. You'll typically:
 
 ```powershell
 # 4. Integrity (Gap 1) and compliance (Gap 3)
-bbreport verify
-bbreport check
+proofforge verify
+proofforge check
 
 # 5. Render the final report
-bbreport render -o report.md
+proofforge render -o report.md
 ```
 
 You get `report.md`, `integrity_summary.json`, and a hash-chained `audit.jsonl`
-(verify it any time with `bbreport audit verify audit.jsonl`).
+(verify it any time with `proofforge audit verify audit.jsonl`).
 
 ## 4. Reading the integrity output for DOM XSS
 
-`bbreport verify` runs the LLM verifier against each claim/evidence pair. For DOM XSS,
+`proofforge verify` runs the LLM verifier against each claim/evidence pair. For DOM XSS,
 the **`http_response` won't contain the executing payload**, so the verifier may report
 the response only *partially* supports the "executes in the browser" claim. That's
 correct, not a bug — the proof lives in the **screenshot + repro_steps**, not the JSON.
 
-Three ways to resolve a flagged claim (spec §9.3):
+Three ways to resolve a flagged claim:
 - **Lean on the right evidence** — make sure the impact claim is backed by the
   screenshot and repro, not just the API response.
 - **Soften the claim** — re-run `report new` and phrase the impact to match exactly what

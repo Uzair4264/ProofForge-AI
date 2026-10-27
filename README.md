@@ -8,8 +8,7 @@ evidence that supports it**, enforces the target program's policy, and renders a
 report — all on your machine. It is *not* a scanner, *not* an exploit generator, and *not* a
 "the-AI-writes-it-for-you" tool.
 
-**CLI:** `bbreport` · **Package:** `bbreport-assistant` · **License:** Apache-2.0 · **Status:** v0, all five
-vuln classes live-validated end-to-end.
+**CLI:** `proofforge` · **Package:** `proofforge-ai` · **License:** Apache-2.0 · **Status:** v0 (early)
 
 ---
 
@@ -32,7 +31,7 @@ security research to the *report* itself:
 | Integrity | none | **every claim traced to evidence** (orphan / over-reach checks) |
 | Program rules | ignored | **scope / required fields / forbidden content** enforced |
 | Severity | guessed | **deterministic CVSS v3.1** |
-| Privacy | sent to the cloud | **100% local by default** |
+| Privacy | sent to the cloud | **local by default** |
 | Auditability | none | **hash-chained, tamper-evident log** |
 
 ## Status (v0)
@@ -44,11 +43,12 @@ security research to the *report* itself:
   opt-in cloud backend behind the same interface.
 - **Deterministic core:** CVSS v3.1, scope/field/forbidden-content checks, claim→evidence DAG,
   hash-chained audit log.
-- **33 passing tests**, cross-platform (Linux/macOS/Windows).
-- **Live-validated end-to-end** against OWASP Juice Shop (real DOM-XSS → compliant report).
+- **Offline mode:** all five classes run end-to-end on the built-in mock backend (no model needed).
+- **Live-validated once so far:** a real OWASP Juice Shop DOM-XSS, captured in Burp, run through the
+  full pipeline on the local model. The other four classes have not yet been validated against a
+  live model and real evidence.
 
-See the workflow diagram in [diagram.md](diagram.md), the full design in [CLAUDE.md](CLAUDE.md), and
-the vision/positioning in [PROJECT.md](PROJECT.md).
+Several integrity and compliance checks are still being hardened.
 
 ## How it works
 
@@ -61,32 +61,47 @@ Deterministic code decides where rules exist; the LLM is called only for narrow 
 sub-tasks (classification, field inference, claim verification) and is always **advisory** — you
 confirm every value before it lands in the report.
 
+Workflow and architecture diagrams: **[diagram.md](diagram.md)**.
+
+## Project layout
+
+```
+src/proofforge/      the package — cli/, core/, evidence/, inference/, elicitation/,
+                     vuln_classes/ (YAML templates), program_packs/ (YAML rule packs),
+                     severity_frameworks/, output_formats/, audit/, llm_backends/, prompts/
+docs/                local LLM setup, Juice Shop walkthrough
+diagram.md           workflow and architecture diagrams
+```
+
 ## Install (development)
 
 ```bash
+git clone https://github.com/Uzair4264/ProofForge-AI.git
+cd ProofForge-AI
 python -m venv .venv
 # Windows: .venv\Scripts\activate   |   Unix: source .venv/bin/activate
 pip install -e ".[dev]"
-bbreport --help
+proofforge --help
 ```
 
-The pipeline runs out of the box on the built-in **mock** backend (no model needed — that's what the
-tests use). For real inference, set up Ollama: see **[docs/setup_local_llm.md](docs/setup_local_llm.md)**
-(`ollama pull qwen2.5:3b-instruct-q4_K_M`, then `bbreport config init --force` and `bbreport doctor`).
+The pipeline runs out of the box on the built-in **mock** backend (no model needed). For real inference, set up Ollama: see **[docs/setup_local_llm.md](docs/setup_local_llm.md)**.
+
+> Upgrading from an older checkout? The CLI used to be `bbreport`; that name still works as an alias,
+> and your existing config and sessions are picked up automatically.
 
 ## Quickstart
 
 ```bash
-bbreport doctor                                   # verify environment
-bbreport init --program hackerone:example-corp    # start a session
-bbreport evidence add -f request.txt  -t http_request
-bbreport evidence add -f response.txt -t http_response
-bbreport evidence add -f shot.png     -t screenshot
-bbreport report new --vuln-class xss --subtype reflected
-bbreport verify                                   # integrity (Gap 1)
-bbreport check                                    # compliance (Gap 3)
-bbreport render -o report.md                      # report.md + audit.jsonl + integrity_summary.json
-bbreport audit verify audit.jsonl                 # confirm the log chain is intact
+proofforge doctor                                   # verify environment
+proofforge init --program hackerone:example-corp    # start a session
+proofforge evidence add -f request.txt  -t http_request
+proofforge evidence add -f response.txt -t http_response
+proofforge evidence add -f shot.png     -t screenshot
+proofforge report new --vuln-class xss --subtype reflected
+proofforge verify                                   # integrity (Gap 1)
+proofforge check                                    # compliance (Gap 3)
+proofforge render -o report.md                      # report.md + audit.jsonl + integrity_summary.json
+proofforge audit verify audit.jsonl                 # confirm the log chain is intact
 ```
 
 **Full real-world walkthrough** (OWASP Juice Shop DOM-XSS, captured in Burp, on the live local model):
@@ -96,14 +111,14 @@ bbreport audit verify audit.jsonl                 # confirm the log chain is int
 
 Open source, Apache-2.0, **open for contribution**. The highest-leverage contributions need **no Python**:
 
-- **Add a vulnerability class** — drop a YAML template in `bbreport_assistant/vuln_classes/templates/`
-  plus its inference prompts in `bbreport_assistant/prompts/`. The engine is class-agnostic.
-- **Add a program rule pack** — a YAML file in `bbreport_assistant/program_packs/packs/`.
+- **Add a vulnerability class** — a YAML template in `src/proofforge/vuln_classes/templates/` plus its
+  inference prompts in `src/proofforge/prompts/`. The engine is class-agnostic.
+- **Add a program rule pack** — a YAML file in `src/proofforge/program_packs/packs/`.
 - Improve prompts, docs, or the Python core (orchestrator, inference, provenance).
 
-A future **Claude Code plugin / vendor-neutral MCP server** direction is sketched in
-[PLUGIN.md](PLUGIN.md) (parked until v0 is stable).
+Open an issue or pull request on GitHub. To report a vulnerability in ProofForge itself, please use
+GitHub's private vulnerability reporting instead of a public issue.
 
 ## License
 
-[Apache-2.0](LICENSE). Documentation (PROJECT.md) is CC BY 4.0.
+[Apache-2.0](LICENSE).

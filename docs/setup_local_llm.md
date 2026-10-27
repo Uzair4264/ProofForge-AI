@@ -44,11 +44,11 @@ ollama list
 
 ## 3. Point ProofForge at Ollama
 
-The config lives at the OS-appropriate location (run `bbreport config path` to see it).
+The config lives at the OS-appropriate location (run `proofforge config path` to see it).
 The defaults already specify the Ollama backend and this model, so the simplest switch is:
 
 ```powershell
-bbreport config init --force
+proofforge config init --force
 ```
 
 This rewrites the config to defaults:
@@ -67,7 +67,7 @@ that file by hand.)
 ## 4. Pre-flight check
 
 ```powershell
-bbreport doctor
+proofforge doctor
 ```
 You want to see:
 ```
@@ -82,7 +82,7 @@ launch the Ollama app once). If the model isn't pulled, re-run step 2.
 - **First call is slow** — Ollama loads the model into memory on the first request.
 - A single inference call is ~10–30 s; a full report makes ~10–18 calls, so end-to-end
   is typically **several minutes** (most of v0's runtime is the model thinking). This is
-  expected and acceptable for a once-per-report tool (spec §7.6, §18).
+  expected and acceptable for a once-per-report tool.
 - Results are **cached** by prompt hash, so re-running `verify`/`check` is instant.
   Pass `--no-cache` while you're tuning prompts to force fresh calls.
 
