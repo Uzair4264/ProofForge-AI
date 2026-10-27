@@ -119,7 +119,7 @@ injection vector, payload) and presents them for confirmation. You'll typically:
 proofforge verify
 proofforge check
 
-# 5. Render the final report
+# 5. Render the final report (refuses until verify and check have run without a block)
 proofforge render -o report.md
 ```
 
@@ -139,8 +139,8 @@ Three ways to resolve a flagged claim:
 - **Soften the claim** — re-run `report new` and phrase the impact to match exactly what
   the screenshot shows (e.g. "alert() executed" rather than "session token stolen",
   unless you actually demonstrated exfiltration).
-- **Override** — proceed with an explicit acknowledgement; this is recorded in the audit
-  log. Orphan/hash checks cannot be overridden.
+- **Override** — `proofforge render --override "<reason>"` renders anyway; the reason is
+  recorded in the audit log. Orphan, evidence-hash and scope blocks cannot be overridden.
 
 ## 5. Tips
 
