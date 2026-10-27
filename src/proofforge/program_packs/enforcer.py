@@ -140,6 +140,14 @@ def check_forbidden_regex(report_text: str, pack: RulePack) -> CheckResult:
     return CheckResult(name="forbidden_content_regex", status="pass", message="No forbidden patterns matched.")
 
 
+def _forbidden_llm_not_run(reason: str) -> CheckResult:
+    return CheckResult(
+        name="forbidden_content_llm", status="warn",
+        message=f"NOT RUN ({reason}). Review the report for PII and secrets manually.",
+        details={"not_run": True, "reason": reason},
+    )
+
+
 def check_forbidden_llm(report_text: str, pack: RulePack, backend: LLMBackend | None) -> CheckResult | None:
     if not pack.forbidden_content.llm_checks or backend is None:
         return None
@@ -150,13 +158,20 @@ def check_forbidden_llm(report_text: str, pack: RulePack, backend: LLMBackend | 
         report_text=report_text[:6000],
         checks="\n".join(f"- {c}" for c in pack.forbidden_content.llm_checks),
     )
+    # A scan that did not run must never read as "pass": report it as not run (warn).
     try:
         result = backend.complete(prompt, expected_format="json")
-    except Exception:  # noqa: BLE001 - advisory check, never blocks
-        return CheckResult(name="forbidden_content_llm", status="pass", message="LLM check skipped (backend error).")
-    violations = result.get("violations") or []
+    except Exception as exc:  # noqa: BLE001 - advisory check, never blocks
+        return _forbidden_llm_not_run(f"backend error: {exc}")
+    violations = result.get("violations")
+    if violations is None:
+        violations = []
+    if not isinstance(violations, list):
+        return _forbidden_llm_not_run("unreadable LLM verdict")
     if violations:
-        descs = "; ".join(v.get("check", "?") for v in violations)
+        descs = "; ".join(
+            str(v.get("check", "?")) if isinstance(v, dict) else str(v) for v in violations
+        )
         return CheckResult(
             name="forbidden_content_llm", status="warn",
             message=f"LLM flagged possible forbidden content: {descs}",
