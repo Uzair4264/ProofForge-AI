@@ -20,6 +20,8 @@ def _author_for(field: Field) -> str:
 # Canonical field ids shared by every template (see plan / enforcer conventions).
 ENDPOINT_FIELD = "affected_endpoint"
 IMPACT_FIELD = "impact_description"
+# Optional; rendered in its own section, not as part of the vulnerability assertion.
+REMEDIATION_FIELD = "remediation"
 
 _RESOLVED_STATES = (FieldState.INFERRED, FieldState.CONFIRMED, FieldState.USER_PROVIDED)
 
@@ -58,7 +60,7 @@ def build_claims(
 
     detail_bits: list[str] = []
     for spec in template.required_fields:
-        if spec.id in (ENDPOINT_FIELD, IMPACT_FIELD):
+        if spec.id in (ENDPOINT_FIELD, IMPACT_FIELD, REMEDIATION_FIELD):
             continue
         field = fields.get(spec.id)
         if _is_resolved(field):

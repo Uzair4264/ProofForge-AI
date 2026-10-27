@@ -93,6 +93,20 @@ required_fields:
         - Phishing via injected content
         - Actions on behalf of the user (only if shown in evidence)
 
+  - id: remediation
+    label: "Suggested remediation"
+    field_type: long_text
+    editor: true
+    is_required: false
+    help:
+      short: "How should the developers fix it? (optional)"
+      long: |
+        Suggest a concrete fix the developers can apply. Optional, but many
+        programs (HackerOne, Bugcrowd) expect a remediation section.
+      examples:
+        - "Encode user input for its output context (HTML-entity encode in the page body, JS-string encode inside scripts)."
+        - "Add a strict Content-Security-Policy that disallows inline scripts."
+
 required_evidence:
   - type: http_request
     description: "Request demonstrating the injection"

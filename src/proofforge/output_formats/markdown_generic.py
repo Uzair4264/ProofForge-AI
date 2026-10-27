@@ -35,11 +35,7 @@ def render(report: Report, evidence: list[Evidence], *, include_cvss_vector: boo
 
     # --- Reproduction / details (generic across vuln classes) ------------- #
     parts.append("## Reproduction")
-    for fid, field in report.fields.items():
-        if fid in ("affected_endpoint", "impact_description"):
-            continue
-        if field.value in (None, ""):
-            continue
+    for _fid, field in base.detail_fields(report):
         value = f"`{field.value}`" if field.field_type in ("string", "url") else field.value
         parts.append(f"- **{field.label}:** {value}")
     repro_claims = base.claims_by_category(report, "reproduction")
@@ -54,6 +50,13 @@ def render(report: Report, evidence: list[Evidence], *, include_cvss_vector: boo
         for c in impact_claims:
             note = "" if c.author == "user" else " _(drafted — review for accuracy)_"
             parts.append(f"{c.text}{note} _(see {', '.join(c.evidence_ids)})_")
+        parts.append("")
+
+    # --- Remediation (optional) ------------------------------------------- #
+    remediation = report.field_value("remediation")
+    if remediation:
+        parts.append("## Remediation")
+        parts.append(str(remediation))
         parts.append("")
 
     # --- Developer detail: evidence --------------------------------------- #

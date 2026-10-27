@@ -99,6 +99,20 @@ required_fields:
         Describe the demonstrated impact and scope (which tables/data, whether
         the whole database is reachable). Only claim what the evidence shows.
 
+  - id: remediation
+    label: "Suggested remediation"
+    field_type: long_text
+    editor: true
+    is_required: false
+    help:
+      short: "How should the developers fix it? (optional)"
+      long: |
+        Suggest a concrete fix the developers can apply. Optional, but many
+        programs (HackerOne, Bugcrowd) expect a remediation section.
+      examples:
+        - "Use parameterized queries / prepared statements for all database access."
+        - "Never concatenate user input into SQL; run the app with a least-privilege database user."
+
 required_evidence:
   - type: http_request
     description: "Request showing the injection payload"

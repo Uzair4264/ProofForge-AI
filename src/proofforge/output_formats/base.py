@@ -26,6 +26,18 @@ def attribution(report: Report) -> str:
     return _ATTRIBUTION_PREFIX + outcome
 
 
+# Fields with their own report sections; everything else is listed as a detail.
+SECTION_FIELDS = ("affected_endpoint", "impact_description", "remediation")
+
+
+def detail_fields(report: Report):
+    """(field_id, Field) pairs for the generic detail list, skipping empty values."""
+    for fid, field in report.fields.items():
+        if fid in SECTION_FIELDS or field.value in (None, ""):
+            continue
+        yield fid, field
+
+
 def claims_by_category(report: Report, category: str) -> list[Claim]:
     return [c for c in report.claims if c.category.value == category]
 

@@ -88,6 +88,20 @@ required_fields:
         Describe the demonstrated impact (e.g. read cloud metadata / credentials,
         reach internal services, port-scan). Only claim what your evidence shows.
 
+  - id: remediation
+    label: "Suggested remediation"
+    field_type: long_text
+    editor: true
+    is_required: false
+    help:
+      short: "How should the developers fix it? (optional)"
+      long: |
+        Suggest a concrete fix the developers can apply. Optional, but many
+        programs (HackerOne, Bugcrowd) expect a remediation section.
+      examples:
+        - "Validate destination URLs against an allowlist of hosts and schemes."
+        - "Block internal and link-local ranges (e.g. 169.254.169.254) after DNS resolution, and disable redirects."
+
 required_evidence:
   - type: http_request
     description: "Request showing the SSRF trigger"

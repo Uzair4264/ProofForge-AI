@@ -88,6 +88,20 @@ required_fields:
         Describe the data exposed or the action performed on another user's
         resource, and the scale (one record vs. enumerable across all users).
 
+  - id: remediation
+    label: "Suggested remediation"
+    field_type: long_text
+    editor: true
+    is_required: false
+    help:
+      short: "How should the developers fix it? (optional)"
+      long: |
+        Suggest a concrete fix the developers can apply. Optional, but many
+        programs (HackerOne, Bugcrowd) expect a remediation section.
+      examples:
+        - "Check on every request that the referenced object belongs to the authenticated user."
+        - "Use unguessable identifiers in addition to (not instead of) the authorization check."
+
 required_evidence:
   - type: http_request
     description: "Request accessing a resource owned by another user"

@@ -87,6 +87,20 @@ required_fields:
         Describe the concrete consequence of forcing the action (e.g. account
         takeover via email change, unauthorized fund transfer).
 
+  - id: remediation
+    label: "Suggested remediation"
+    field_type: long_text
+    editor: true
+    is_required: false
+    help:
+      short: "How should the developers fix it? (optional)"
+      long: |
+        Suggest a concrete fix the developers can apply. Optional, but many
+        programs (HackerOne, Bugcrowd) expect a remediation section.
+      examples:
+        - "Require an unpredictable per-session CSRF token on every state-changing request."
+        - "Set SameSite=Lax or Strict on session cookies."
+
 required_evidence:
   - type: code_snippet
     description: "HTML/JS PoC that triggers the action cross-origin"
