@@ -67,7 +67,7 @@ def get_current_id() -> str | None:
 def load_current() -> Session:
     sid = get_current_id()
     if sid is None:
-        raise SessionError("No active session. Run 'bbreport init' first.")
+        raise SessionError("No active session. Run 'proofforge init' first.")
     return load(sid)
 
 

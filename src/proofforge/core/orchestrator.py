@@ -166,7 +166,7 @@ class Orchestrator:
     # -- Stage 5: compliance ---------------------------------------------- #
     def check_compliance(self, session: Session, *, run_llm: bool = True) -> ComplianceReport:
         if session.report is None:
-            raise ValueError("No report to check. Run 'bbreport report new' first.")
+            raise ValueError("No report to check. Run 'proofforge report new' first.")
         pack = get_pack(session.program_id)
         report_text = self.render(session)
         backend = self.backend if run_llm else None
@@ -175,7 +175,7 @@ class Orchestrator:
     # -- Stage 6: rendering ----------------------------------------------- #
     def render(self, session: Session) -> str:
         if session.report is None:
-            raise ValueError("No report to render. Run 'bbreport report new' first.")
+            raise ValueError("No report to render. Run 'proofforge report new' first.")
         pack = get_pack(session.program_id)
         renderer = get_renderer(pack.output_preferences.format)
         return renderer(

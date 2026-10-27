@@ -1,26 +1,38 @@
 """Cross-platform runtime path resolution.
 
 All runtime directories are resolved via ``platformdirs`` so the tool behaves
-correctly on Linux, macOS, and Windows. Never hardcode ``~/.bbreport-assistant``
+correctly on Linux, macOS, and Windows. Never hardcode ``~/.proofforge``
 anywhere in the codebase — always go through this module.
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from pathlib import Path
 
 from platformdirs import user_cache_dir, user_config_dir, user_data_dir
 
 from .exceptions import PathValidationError
 
-APP_NAME = "bbreport-assistant"
+APP_NAME = "proofforge"
+# Pre-rename directory name. Existing installs keep using it until the user moves it.
+LEGACY_APP_NAME = "bbreport-assistant"
 
-# appauthor=False avoids the "Author\AppName" double-nesting on Windows, matching
-# the single-directory layout documented in the spec (§4.2).
-CONFIG_DIR = Path(user_config_dir(APP_NAME, appauthor=False))
-DATA_DIR = Path(user_data_dir(APP_NAME, appauthor=False))
-CACHE_DIR = Path(user_cache_dir(APP_NAME, appauthor=False))
+
+def _app_dir(resolver: Callable[..., str]) -> Path:
+    # appauthor=False avoids the "Author\AppName" double-nesting on Windows, matching
+    # the single-directory layout documented in the spec (§4.2).
+    current = Path(resolver(APP_NAME, appauthor=False))
+    legacy = Path(resolver(LEGACY_APP_NAME, appauthor=False))
+    if not current.exists() and legacy.exists():
+        return legacy
+    return current
+
+
+CONFIG_DIR = _app_dir(user_config_dir)
+DATA_DIR = _app_dir(user_data_dir)
+CACHE_DIR = _app_dir(user_cache_dir)
 
 SESSIONS_DIR = DATA_DIR / "sessions"
 LLM_CACHE_DIR = CACHE_DIR / "llm"

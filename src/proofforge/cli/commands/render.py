@@ -1,4 +1,4 @@
-"""``bbreport render`` — produce the final report + audit + integrity summary (Stage 6)."""
+"""``proofforge render`` — produce the final report + audit + integrity summary (Stage 6)."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ def render(
         error(str(exc))
         raise typer.Exit(code=1)
     if session.report is None:
-        error("No report yet. Run 'bbreport report new' first.")
+        error("No report yet. Run 'proofforge report new' first.")
         raise typer.Exit(code=1)
 
     orch = Orchestrator(get_backend(no_cache=no_cache))

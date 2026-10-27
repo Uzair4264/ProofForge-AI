@@ -1,4 +1,4 @@
-"""``bbreport evidence`` — add / list / remove evidence files."""
+"""``proofforge evidence`` — add / list / remove evidence files."""
 
 from __future__ import annotations
 

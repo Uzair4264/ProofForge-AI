@@ -1,4 +1,7 @@
-"""CLI entrypoint. Assembles the command groups into the ``bbreport`` app."""
+"""CLI entrypoint. Assembles the command groups into the ``proofforge`` app.
+
+``bbreport`` is installed as a legacy alias for the same app.
+"""
 
 from __future__ import annotations
 
@@ -18,7 +21,7 @@ from .commands.render import render
 from .commands.verify import verify
 
 app = typer.Typer(
-    name="bbreport",
+    name="proofforge",
     help="ProofForge AI — evidence-backed, program-compliant bug bounty reports.",
     no_args_is_help=True,
     add_completion=False,
@@ -27,7 +30,7 @@ app = typer.Typer(
 
 def _version_callback(value: bool) -> None:
     if value:
-        typer.echo(f"bbreport {__version__}")
+        typer.echo(f"proofforge {__version__}")
         raise typer.Exit()
 
 

@@ -1,4 +1,4 @@
-"""``bbreport doctor`` — platform-aware setup diagnostics (spec §16.5)."""
+"""``proofforge doctor`` — platform-aware setup diagnostics (spec §16.5)."""
 
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ def doctor() -> None:
     if paths.CONFIG_FILE.exists():
         console.print(f"{OK} Config present ({config.llm.backend} / {config.llm.model})")
     else:
-        console.print(f"{WARN} No config file yet (using defaults). Run 'bbreport config init'.")
+        console.print(f"{WARN} No config file yet (using defaults). Run 'proofforge config init'.")
 
     # Data packs / templates.
     console.print(f"{OK} Vuln classes available: {', '.join(available_classes()) or '(none)'}")

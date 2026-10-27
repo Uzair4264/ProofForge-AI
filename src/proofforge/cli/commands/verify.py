@@ -1,4 +1,4 @@
-"""``bbreport verify`` — run integrity checks (Gap 1, Stage 4)."""
+"""``proofforge verify`` — run integrity checks (Gap 1, Stage 4)."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ def verify(
         error(str(exc))
         raise typer.Exit(code=1)
     if session.report is None:
-        error("No report yet. Run 'bbreport report new' first.")
+        error("No report yet. Run 'proofforge report new' first.")
         raise typer.Exit(code=1)
 
     orch = Orchestrator(get_backend(no_cache=no_cache))

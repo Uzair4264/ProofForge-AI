@@ -13,8 +13,7 @@ from pathlib import Path
 
 from ..core.exceptions import LLMError
 
-# prompts/ sits next to the package root (bbreport_assistant/../prompts is wrong;
-# we keep prompts inside the package for install portability).
+# prompts/ lives inside the package (src/proofforge/prompts/) for install portability.
 PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 
 

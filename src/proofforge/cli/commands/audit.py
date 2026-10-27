@@ -1,4 +1,4 @@
-"""``bbreport audit`` — verify the integrity of an audit log chain (spec §11.4)."""
+"""``proofforge audit`` — verify the integrity of an audit log chain (spec §11.4)."""
 
 from __future__ import annotations
 

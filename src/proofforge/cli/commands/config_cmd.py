@@ -1,4 +1,4 @@
-"""``bbreport config`` — view and initialize configuration."""
+"""``proofforge config`` — view and initialize configuration."""
 
 from __future__ import annotations
 

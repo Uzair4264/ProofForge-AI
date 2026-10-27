@@ -24,12 +24,13 @@ class OpenAICompatibleBackend(LLMBackend):
         model: str,
         endpoint: str = "https://api.openai.com/v1",
         temperature: float = 0.1,
-        api_key_env: str = "BBREPORT_LLM_API_KEY",
+        api_key_env: str = "PROOFFORGE_LLM_API_KEY",
     ) -> None:
         self.model = model
         self.endpoint = endpoint.rstrip("/")
         self.temperature = temperature
-        self.api_key = os.environ.get(api_key_env, "")
+        # BBREPORT_LLM_API_KEY is the pre-rename name, still honored as a fallback.
+        self.api_key = os.environ.get(api_key_env) or os.environ.get("BBREPORT_LLM_API_KEY", "")
         if not self.api_key:
             raise LLMError(f"No API key found in environment variable {api_key_env}")
 

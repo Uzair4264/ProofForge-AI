@@ -1,4 +1,4 @@
-"""``bbreport help`` — vuln-class and command guidance (spec §12.7)."""
+"""``proofforge help`` — vuln-class and command guidance (spec §12.7)."""
 
 from __future__ import annotations
 

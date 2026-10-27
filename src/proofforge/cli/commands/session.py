@@ -1,4 +1,4 @@
-"""``bbreport session`` — list / switch / show sessions."""
+"""``proofforge session`` — list / switch / show sessions."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ def list_() -> None:
     current = session_store.get_current_id()
     sessions = session_store.list_sessions()
     if not sessions:
-        console.print("[dim]No sessions yet. Run 'bbreport init'.[/dim]")
+        console.print("[dim]No sessions yet. Run 'proofforge init'.[/dim]")
         return
     table = Table("", "Session", "Program", "Vuln class", "Evidence", "Report")
     for sid in sessions:

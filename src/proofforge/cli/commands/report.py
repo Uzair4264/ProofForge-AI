@@ -1,4 +1,4 @@
-"""``bbreport report`` — build the structured report (Stages 1-3 + assembly)."""
+"""``proofforge report`` — build the structured report (Stages 1-3 + assembly)."""
 
 from __future__ import annotations
 
@@ -116,4 +116,4 @@ def new(
     console.print(f"\n{OK} Report assembled: {len(report.claims)} claim(s).")
     if report.severity_vector:
         console.print(f"  Severity: {report.severity_score} ({report.severity_rating})  {report.severity_vector}")
-    console.print(f"  {ASK} Next: [bold]bbreport verify[/bold], then [bold]bbreport check[/bold], then [bold]bbreport render[/bold].")
+    console.print(f"  {ASK} Next: [bold]proofforge verify[/bold], then [bold]proofforge check[/bold], then [bold]proofforge render[/bold].")

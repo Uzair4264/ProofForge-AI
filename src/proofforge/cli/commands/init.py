@@ -1,4 +1,4 @@
-"""``bbreport init`` — start a new report session."""
+"""``proofforge init`` — start a new report session."""
 
 from __future__ import annotations
 
