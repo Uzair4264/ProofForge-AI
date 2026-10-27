@@ -49,6 +49,9 @@ class Evidence(BaseModel):
 # --------------------------------------------------------------------------- #
 # Fields (adaptive elicitation)
 # --------------------------------------------------------------------------- #
+ImpactBasis = Literal["demonstrated", "inferred"]
+
+
 class FieldState(str, Enum):
     PENDING = "pending"              # not yet processed
     INFERRED = "inferred"            # value set by inference engine
@@ -67,6 +70,8 @@ class Field(BaseModel):
     confidence: Optional[float] = None       # set when state == INFERRED
     inference_reasoning: Optional[str] = None
     is_required: bool = True
+    # For impact: did the evidence demonstrate it, or is it inferred / potential?
+    basis: Optional[ImpactBasis] = None
 
 
 # --------------------------------------------------------------------------- #
@@ -87,6 +92,7 @@ class Claim(BaseModel):
     evidence_ids: list[str] = PydField(default_factory=list)
     author: str = "user"                     # "user", "inferred", "llm_polished"
     confidence: Optional[float] = None
+    basis: Optional[ImpactBasis] = None      # impact claims only
 
 
 class ProvenanceLink(BaseModel):

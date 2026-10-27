@@ -2,8 +2,11 @@
 
 Presents all inferred fields with their values and confidence, lets the user
 accept everything in bulk or drill into specific fields. In non-interactive mode
-(``auto_confirm``), all inferred values are confirmed automatically — used by
+(``auto_confirm``), inferred values are confirmed automatically — used by
 scripted/test runs.
+
+AI drafts (``suggest_only`` fields such as the impact narrative) are never
+confirmed in bulk or by ``auto_confirm``: each needs its own explicit "yes".
 """
 
 from __future__ import annotations
@@ -12,7 +15,7 @@ from typing import Callable, Optional
 
 from rich.console import Console
 
-from ..core.types import Field, FieldState
+from ..core.types import Field, FieldState, ImpactBasis
 from ..inference.confidence import confidence_label
 
 Responder = Callable[[str], str]
@@ -24,30 +27,39 @@ def _mark(state: FieldState, confidence: float | None) -> str:
     return f"[{glyph}]"
 
 
+def _reject(field: Field) -> None:
+    field.state = FieldState.PENDING
+    field.value = None
+
+
 def present_inferred(
     console: Console,
     inferred: dict[str, Field],
     *,
     auto_confirm: bool = False,
     responder: Optional[Responder] = None,
+    drafts: frozenset[str] = frozenset(),
 ) -> dict[str, Field]:
     """Show inferred fields and confirm them.
 
     Returns the (possibly mutated) fields with INFERRED -> CONFIRMED where the
     user accepted. Fields the user rejects are reset to PENDING so the dialog
-    stage will ask about them.
+    stage will ask about them. ``drafts`` are field ids holding an AI draft;
+    they are confirmed only by an explicit per-field "y" (default No).
     """
     out = dict(inferred)
     inferred_only = {
         fid: f for fid, f in inferred.items() if f.state == FieldState.INFERRED
     }
+    regular = {fid: f for fid, f in inferred_only.items() if fid not in drafts}
+    draft_fields = {fid: f for fid, f in inferred_only.items() if fid in drafts}
 
     if not inferred_only:
         console.print("[dim]No fields could be inferred from the evidence.[/dim]")
         return out
 
     console.print("\n[bold]Based on your evidence, I've filled in the following:[/bold]\n")
-    for fid, field in inferred_only.items():
+    for fid, field in regular.items():
         mark = _mark(field.state, field.confidence)
         label = confidence_label(field.confidence)
         console.print(
@@ -58,30 +70,73 @@ def present_inferred(
             console.print(f"      [dim]> {field.inference_reasoning}[/dim]")
 
     if auto_confirm:
-        for field in inferred_only.values():
+        for field in regular.values():
             field.state = FieldState.CONFIRMED
-        console.print("\n[green]All inferred values confirmed automatically.[/green]")
+        if regular:
+            console.print("\n[green]Inferred values confirmed automatically.[/green]")
+        for field in draft_fields.values():
+            _reject(field)
+            console.print(
+                f"[yellow]! AI-drafted '{field.label}' was not accepted (--yes never accepts "
+                f"drafts). Write your own, or run without --yes to review the draft.[/yellow]"
+            )
         return out
 
-    answer = (
-        responder("__confirm_all__") if responder is not None
-        else console.input("\nConfirm all inferred values? [Y/n/edit] ")
-    ).strip().lower()
+    if regular:
+        answer = (
+            responder("__confirm_all__") if responder is not None
+            else console.input("\nConfirm all inferred values? [Y/n/edit] ")
+        ).strip().lower()
 
-    if answer in ("", "y", "yes"):
-        for field in inferred_only.values():
-            field.state = FieldState.CONFIRMED
-        return out
+        if answer in ("", "y", "yes"):
+            for field in regular.values():
+                field.state = FieldState.CONFIRMED
+        else:
+            # Per-field review.
+            for fid, field in regular.items():
+                per = (
+                    responder(fid) if responder is not None
+                    else console.input(f"  Keep '{field.label}' = {field.value}? [Y/n] ")
+                ).strip().lower()
+                if per in ("", "y", "yes"):
+                    field.state = FieldState.CONFIRMED
+                else:
+                    _reject(field)
 
-    # Per-field review.
-    for fid, field in inferred_only.items():
+    for fid, field in draft_fields.items():
+        console.print(f"\n[bold]AI draft — {field.label}:[/bold]\n  {field.value}")
         per = (
             responder(fid) if responder is not None
-            else console.input(f"  Keep '{field.label}' = {field.value}? [Y/n] ")
+            else console.input(
+                "  Use this draft? Only say yes if your evidence shows all of it. [y/N] "
+            )
         ).strip().lower()
-        if per in ("", "y", "yes"):
+        if per in ("y", "yes"):
             field.state = FieldState.CONFIRMED
         else:
-            field.state = FieldState.PENDING
-            field.value = None
+            _reject(field)
     return out
+
+
+def ask_impact_basis(
+    console: Console,
+    field: Field,
+    *,
+    responder: Optional[Responder] = None,
+) -> ImpactBasis:
+    """Ask whether the impact is demonstrated by the evidence or only inferred."""
+    console.print(f"\n[bold]{field.label}:[/bold] {field.value}")
+    while True:
+        raw = (
+            responder(f"{field.id}__basis") if responder is not None
+            else console.input(
+                "  Does your evidence demonstrate this impact (d), or is it inferred / potential (i)? [d/i] "
+            )
+        ).strip().lower()
+        if raw in ("d", "demonstrated"):
+            return "demonstrated"
+        if raw in ("i", "inferred"):
+            return "inferred"
+        if responder is not None:
+            return "inferred"  # a scripted non-answer never claims more than shown
+        console.print("  [dim]Please answer d or i.[/dim]")

@@ -90,6 +90,7 @@ def build_claims(
                 evidence_ids=all_evidence_ids,
                 author=_author_for(impact),
                 confidence=impact.confidence,
+                basis=impact.basis,
             )
         )
 

@@ -11,8 +11,9 @@ from ...core import session_store
 from ...core.exceptions import BBReportError
 from ...core.orchestrator import Orchestrator
 from ...core.types import Field, FieldState
-from ...elicitation.confirmation import present_inferred
+from ...elicitation.confirmation import ask_impact_basis, present_inferred
 from ...elicitation.dialog import ElicitationCancelled, elicit_pending
+from ...vuln_classes.engine import IMPACT_FIELD
 from ...vuln_classes.loader import available_classes, get_template
 from ..common import ASK, OK, WARN, console, error, get_backend
 
@@ -26,7 +27,7 @@ def new(
     severity: Optional[str] = typer.Option(None, "--severity", help="Override CVSS v3.1 vector"),
     title: Optional[str] = typer.Option(None, "--title", help="Report title"),
     description: str = typer.Option("", "--description", "-d", help="Initial vulnerability description"),
-    yes: bool = typer.Option(False, "--yes", "-y", help="Auto-confirm inferred fields (non-interactive)"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Auto-confirm inferred fields (non-interactive). Never accepts AI drafts such as the impact."),
     no_cache: bool = typer.Option(False, "--no-cache", help="Bypass the LLM cache"),
     allow_cloud: bool = typer.Option(False, "--allow-cloud", help="Permit cloud LLM backends"),
 ) -> None:
@@ -86,10 +87,18 @@ def new(
     inferred = orch.infer(vuln_class, session.evidence, observer=observe)
 
     # --- Stage 3: confirmation + elicitation --------------------------- #
-    confirmed = present_inferred(console, inferred, auto_confirm=yes)
+    drafts = frozenset(
+        s.id for s in template.required_fields
+        if s.inference is not None and s.inference.mode == "suggest_only"
+    )
+    drafted = {fid for fid in drafts if inferred.get(fid) and inferred[fid].state == FieldState.INFERRED}
+    confirmed = present_inferred(console, inferred, auto_confirm=yes, drafts=drafts)
     for fid, field in confirmed.items():
         if field.state in (FieldState.CONFIRMED, FieldState.USER_PROVIDED):
             logger.log(actor="user", action="confirm_field", target=fid, result=field.state.value)
+        elif fid in drafted:
+            logger.log(actor="user" if not yes else "system", action="reject_draft", target=fid,
+                       result="rejected", details={"auto": yes})
 
     try:
         resolved = elicit_pending(
@@ -99,6 +108,13 @@ def new(
     except ElicitationCancelled:
         console.print(f"{WARN} Report cancelled.")
         raise typer.Exit(code=0)
+
+    # Demonstrated vs inferred impact: asked only interactively; --yes never
+    # resolves the impact (the draft is rejected and the question skipped).
+    impact = resolved.get(IMPACT_FIELD)
+    if not yes and impact and impact.value and impact.state in (FieldState.CONFIRMED, FieldState.USER_PROVIDED):
+        impact.basis = ask_impact_basis(console, impact)
+        logger.log(actor="user", action="impact_basis", target=IMPACT_FIELD, result=impact.basis)
 
     # --- Assemble ------------------------------------------------------- #
     report = orch.build_report(

@@ -38,6 +38,13 @@ def detail_fields(report: Report):
         yield fid, field
 
 
+def impact_basis_note(claim: Claim) -> str:
+    """Label impact the researcher marked as inferred, so it never reads as proven."""
+    if claim.basis == "inferred":
+        return " _(potential impact — not demonstrated by the evidence)_"
+    return ""
+
+
 def claims_by_category(report: Report, category: str) -> list[Claim]:
     return [c for c in report.claims if c.category.value == category]
 

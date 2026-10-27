@@ -49,6 +49,7 @@ def render(report: Report, evidence: list[Evidence], *, include_cvss_vector: boo
         parts.append("## Impact")
         for c in impact_claims:
             note = "" if c.author == "user" else " _(drafted — review for accuracy)_"
+            note += base.impact_basis_note(c)
             parts.append(f"{c.text}{note} _(see {', '.join(c.evidence_ids)})_")
         parts.append("")
 
