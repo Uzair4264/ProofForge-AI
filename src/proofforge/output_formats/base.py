@@ -9,10 +9,21 @@ from __future__ import annotations
 
 from ..core.types import Claim, Evidence, Report
 
-ATTRIBUTION = (
-    "_Drafted with ProofForge AI — an evidence-integrity assistant. "
-    "All claims are backed by the attached evidence; nothing was fabricated._"
-)
+_ATTRIBUTION_PREFIX = "_Drafted with ProofForge AI — an evidence-integrity assistant. "
+
+
+def attribution(report: Report) -> str:
+    """Footer that states only what the integrity/compliance checks actually showed."""
+    statuses = (report.integrity_status, report.compliance_status)
+    if statuses == ("pass", "pass"):
+        outcome = "All claims passed integrity and compliance checks against the attached evidence._"
+    elif None in statuses:
+        outcome = ("Integrity and compliance checks have not both been run on this version; "
+                   "review each claim against the attached evidence._")
+    else:
+        outcome = ("Integrity or compliance checks flagged issues; "
+                   "review each claim against the attached evidence._")
+    return _ATTRIBUTION_PREFIX + outcome
 
 
 def claims_by_category(report: Report, category: str) -> list[Claim]:

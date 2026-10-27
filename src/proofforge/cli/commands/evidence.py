@@ -41,6 +41,8 @@ def add(
         raise typer.Exit(code=1)
 
     session.evidence.append(evidence)
+    if session.report is not None:
+        session.report.reset_checks()
     session_store.save(session)
 
     logger = AuditLogger(session_store.audit_log_path(session.id))
@@ -83,6 +85,8 @@ def remove(id_: str = typer.Option(..., "--id", help="Evidence id to remove, e.g
     if len(session.evidence) == before:
         error(f"No evidence with id {id_}")
         raise typer.Exit(code=1)
+    if session.report is not None:
+        session.report.reset_checks()
     session_store.save(session)
 
     logger = AuditLogger(session_store.audit_log_path(session.id))

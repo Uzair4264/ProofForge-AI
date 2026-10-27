@@ -17,7 +17,7 @@ from .exceptions import ConfigError
 
 
 class LLMConfig(BaseModel):
-    backend: str = "ollama"
+    backend: str = "mock"
     model: str = "qwen2.5:3b-instruct-q4_K_M"
     endpoint: str = "http://localhost:11434"
     temperature: float = 0.1

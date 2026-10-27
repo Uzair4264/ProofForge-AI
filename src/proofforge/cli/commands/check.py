@@ -40,6 +40,11 @@ def check(
         logger.log(actor="system", action="compliance_check", target=c.name,
                    result=c.status, details={"message": c.message})
 
+    # A --no-llm pass skipped the LLM forbidden-content scan, so it does not count as checked.
+    skipped_llm_pass = no_llm and report.overall_status == "pass"
+    session.report.compliance_status = None if skipped_llm_pass else report.overall_status
+    session_store.save(session)
+
     if report.overall_status == "block":
         console.print(f"\n{FAIL} [red]Compliance blocked.[/red]")
         raise typer.Exit(code=2)

@@ -36,6 +36,11 @@ def verify(
         logger.log(actor="system", action="integrity_check", target=check.name,
                    result=check.status, details={"message": check.message})
 
+    # A --no-llm pass skipped the consistency checks, so it does not count as verified.
+    skipped_llm_pass = no_llm and report.overall_status == "pass"
+    session.report.integrity_status = None if skipped_llm_pass else report.overall_status
+    session_store.save(session)
+
     if report.overall_status == "block":
         console.print(f"\n{FAIL} [red]Integrity checks blocked. Resolve issues or override before rendering.[/red]")
         raise typer.Exit(code=2)

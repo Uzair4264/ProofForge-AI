@@ -61,5 +61,5 @@ def render(report: Report, evidence: list[Evidence], *, include_cvss_vector: boo
     parts.append("")
 
     parts.append("---")
-    parts.append(base.ATTRIBUTION)
+    parts.append(base.attribution(report))
     return "\n".join(parts) + "\n"

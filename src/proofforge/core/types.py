@@ -100,6 +100,9 @@ class ProvenanceLink(BaseModel):
 # --------------------------------------------------------------------------- #
 # Report
 # --------------------------------------------------------------------------- #
+CheckStatus = Literal["pass", "warn", "block"]
+
+
 class Report(BaseModel):
     vuln_class: str
     subtype: Optional[str] = None
@@ -110,10 +113,18 @@ class Report(BaseModel):
     severity_vector: Optional[str] = None
     severity_score: Optional[float] = None
     severity_rating: Optional[str] = None
+    # Outcome of the last full `verify` / `check` run; None = not run since the
+    # report or its evidence last changed.
+    integrity_status: Optional[CheckStatus] = None
+    compliance_status: Optional[CheckStatus] = None
 
     def field_value(self, field_id: str) -> Any:
         f = self.fields.get(field_id)
         return f.value if f else None
+
+    def reset_checks(self) -> None:
+        self.integrity_status = None
+        self.compliance_status = None
 
 
 # --------------------------------------------------------------------------- #
@@ -154,9 +165,6 @@ class VerificationVerdict(BaseModel):
 # --------------------------------------------------------------------------- #
 # Check results (Stages 4 & 5)
 # --------------------------------------------------------------------------- #
-CheckStatus = Literal["pass", "warn", "block"]
-
-
 class CheckResult(BaseModel):
     name: str
     status: CheckStatus

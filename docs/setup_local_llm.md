@@ -45,13 +45,14 @@ ollama list
 ## 3. Point ProofForge at Ollama
 
 The config lives at the OS-appropriate location (run `proofforge config path` to see it).
-The defaults already specify the Ollama backend and this model, so the simplest switch is:
+The default backend is the offline `mock`; the model and endpoint already point at Ollama.
+Create the config file if you don't have one yet:
 
 ```powershell
-proofforge config init --force
+proofforge config init
 ```
 
-This rewrites the config to defaults:
+Then open it and change `backend: mock` to `backend: ollama`:
 ```yaml
 llm:
   backend: ollama
@@ -61,8 +62,6 @@ llm:
   max_tokens: 1024
   timeout_seconds: 120
 ```
-(If you'd rather keep other settings, just edit `backend: mock` → `backend: ollama` in
-that file by hand.)
 
 ## 4. Pre-flight check
 
