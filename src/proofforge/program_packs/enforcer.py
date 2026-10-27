@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import fnmatch
 import re
-from urllib.parse import urlparse
+from urllib.parse import urlsplit
 
 from ..core.types import CheckResult, ComplianceReport, Report
 from ..llm_backends.base import LLMBackend
@@ -41,13 +41,34 @@ def _present_keys(report: Report) -> set[str]:
     return keys
 
 
-def _asset_matches(asset: str, patterns: list[str]) -> bool:
-    return any(fnmatch.fnmatch(asset, p) for p in patterns)
+def _endpoint_host(endpoint: str) -> tuple[str, int | None]:
+    """Lowercased host and port of an endpoint URL ("" if there is no host).
+
+    Accepts scheme-less input ("api.example.com/x"). Raises ValueError for a
+    malformed port.
+    """
+    text = endpoint.strip()
+    parsed = urlsplit(text if "://" in text else f"//{text}")
+    return (parsed.hostname or ""), parsed.port
+
+
+def _asset_matches(host: str, port: int | None, patterns: list[str]) -> bool:
+    # Hosts are case-insensitive on every OS (fnmatch.fnmatch is only on Windows).
+    # A pattern without a port covers every port; "host:*" / "host:8080" match host:port.
+    candidates = [host] + ([f"{host}:{port}"] if port is not None else [])
+    return any(fnmatch.fnmatchcase(c, p.strip().lower()) for c in candidates for p in patterns)
 
 
 def check_scope(report: Report, pack: RulePack) -> CheckResult:
     endpoint = report.field_value("affected_endpoint")
-    host = urlparse(str(endpoint)).netloc if endpoint else ""
+    restricted = bool(pack.scope.in_scope_assets or pack.scope.out_of_scope_assets)
+    try:
+        host, port = _endpoint_host(str(endpoint)) if endpoint else ("", None)
+    except ValueError:
+        return CheckResult(
+            name="scope", status="block", overridable=False,
+            message=f"Could not parse the affected endpoint '{endpoint}'.",
+        )
 
     # Vuln type scope.
     vc = report.vuln_class
@@ -62,19 +83,30 @@ def check_scope(report: Report, pack: RulePack) -> CheckResult:
             message=f"Vuln type '{vc}' is not listed in scope.",
         )
 
-    # Asset scope.
-    if host and pack.scope.out_of_scope_assets and _asset_matches(host, pack.scope.out_of_scope_assets):
+    # Asset scope. A missing endpoint never passes: it blocks when the program
+    # restricts assets, and warns (asset not checked) when it does not.
+    if not host:
+        if restricted:
+            return CheckResult(
+                name="scope", status="block", overridable=False,
+                message="No affected endpoint host, so asset scope cannot be confirmed.",
+            )
+        return CheckResult(
+            name="scope", status="warn",
+            message=f"Vuln type in scope ({vc}); no affected endpoint host, so the asset was not checked.",
+        )
+    if pack.scope.out_of_scope_assets and _asset_matches(host, port, pack.scope.out_of_scope_assets):
         return CheckResult(
             name="scope", status="block", overridable=False,
             message=f"Asset '{host}' is explicitly out of scope.",
         )
-    if host and pack.scope.in_scope_assets and not _asset_matches(host, pack.scope.in_scope_assets):
+    if pack.scope.in_scope_assets and not _asset_matches(host, port, pack.scope.in_scope_assets):
         return CheckResult(
             name="scope", status="block", overridable=False,
             message=f"Asset '{host}' does not match any in-scope asset.",
         )
 
-    return CheckResult(name="scope", status="pass", message=f"Asset and vuln type in scope ({vc}).")
+    return CheckResult(name="scope", status="pass", message=f"Asset '{host}' and vuln type in scope ({vc}).")
 
 
 def check_required_fields(report: Report, pack: RulePack) -> CheckResult:
