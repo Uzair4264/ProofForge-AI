@@ -92,14 +92,7 @@ class Orchestrator:
             report.severity_score = result.score
             report.severity_rating = result.rating
 
-        # Derive provenance links from claim.evidence_ids.
-        graph = ProvenanceGraph.build(evidence, claims)
-        report.provenance = []
-        for claim in claims:
-            for ev_id in claim.evidence_ids:
-                from .types import ProvenanceLink
-
-                report.provenance.append(ProvenanceLink(claim_id=claim.id, evidence_id=ev_id))
+        report.rebuild_provenance()
         return report
 
     # -- Stage 4: integrity verification ---------------------------------- #
@@ -112,7 +105,10 @@ class Orchestrator:
         if orphans:
             checks.append(CheckResult(
                 name="orphan", status="block", overridable=False,
-                message=f"Orphan claims with no evidence: {', '.join(c.id for c in orphans)}",
+                message=(
+                    f"Orphan claims with no evidence: {', '.join(c.id for c in orphans)}. "
+                    "Link evidence with 'proofforge report link --claim <id> --evidence <ids>'."
+                ),
             ))
         else:
             checks.append(CheckResult(name="orphan", status="pass", message="All claims have supporting evidence."))

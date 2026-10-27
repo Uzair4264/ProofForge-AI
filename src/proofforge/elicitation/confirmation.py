@@ -15,7 +15,7 @@ from typing import Callable, Optional
 
 from rich.console import Console
 
-from ..core.types import Field, FieldState, ImpactBasis
+from ..core.types import Evidence, Field, FieldState, ImpactBasis
 from ..inference.confidence import confidence_label
 
 Responder = Callable[[str], str]
@@ -30,6 +30,7 @@ def _mark(state: FieldState, confidence: float | None) -> str:
 def _reject(field: Field) -> None:
     field.state = FieldState.PENDING
     field.value = None
+    field.evidence_ids = []
 
 
 def present_inferred(
@@ -140,3 +141,42 @@ def ask_impact_basis(
         if responder is not None:
             return "inferred"  # a scripted non-answer never claims more than shown
         console.print("  [dim]Please answer d or i.[/dim]")
+
+
+def ask_impact_evidence(
+    console: Console,
+    field: Field,
+    evidence: list[Evidence],
+    suggested_types: list[str],
+    *,
+    responder: Optional[Responder] = None,
+) -> list[str]:
+    """Ask which evidence shows the impact. Enter accepts the suggestion.
+
+    The suggestion is the evidence an accepted draft was based on, else the
+    evidence of the types the template names for this field.
+    """
+    known = {e.id for e in evidence}
+    suggestion = [i for i in field.evidence_ids if i in known] or [
+        e.id for e in evidence if e.type.value in suggested_types
+    ]
+    console.print("  Evidence: " + ", ".join(f"{e.id} ({e.type.value})" for e in evidence))
+    while True:
+        raw = (
+            responder(f"{field.id}__evidence") if responder is not None
+            else console.input(
+                f"  Which evidence shows this impact? Comma-separated ids, or 'none' "
+                f"[{', '.join(suggestion) or 'none'}] "
+            )
+        ).strip()
+        if not raw:
+            return suggestion
+        if raw.lower() == "none":
+            return []
+        ids = [part.strip() for part in raw.split(",") if part.strip()]
+        unknown = [i for i in ids if i not in known]
+        if not unknown:
+            return ids
+        if responder is not None:
+            return [i for i in ids if i in known]
+        console.print(f"  [yellow]! Unknown evidence id(s): {', '.join(unknown)}[/yellow]")

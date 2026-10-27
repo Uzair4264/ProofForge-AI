@@ -11,7 +11,7 @@ from ...core import session_store
 from ...core.exceptions import BBReportError
 from ...core.orchestrator import Orchestrator
 from ...core.types import Field, FieldState
-from ...elicitation.confirmation import ask_impact_basis, present_inferred
+from ...elicitation.confirmation import ask_impact_basis, ask_impact_evidence, present_inferred
 from ...elicitation.dialog import ElicitationCancelled, elicit_pending
 from ...vuln_classes.engine import IMPACT_FIELD
 from ...vuln_classes.loader import available_classes, get_template
@@ -115,6 +115,13 @@ def new(
     if not yes and impact and impact.value and impact.state in (FieldState.CONFIRMED, FieldState.USER_PROVIDED):
         impact.basis = ask_impact_basis(console, impact)
         logger.log(actor="user", action="impact_basis", target=IMPACT_FIELD, result=impact.basis)
+        impact_spec = next(s for s in template.required_fields if s.id == IMPACT_FIELD)
+        impact.evidence_ids = ask_impact_evidence(
+            console, impact, session.evidence,
+            impact_spec.inference.from_evidence if impact_spec.inference else [],
+        )
+        logger.log(actor="user", action="link_evidence", target=IMPACT_FIELD, result="ok",
+                   details={"evidence_ids": impact.evidence_ids})
 
     # --- Assemble ------------------------------------------------------- #
     report = orch.build_report(
@@ -133,3 +140,42 @@ def new(
     if report.severity_vector:
         console.print(f"  Severity: {report.severity_score} ({report.severity_rating})  {report.severity_vector}")
     console.print(f"  {ASK} Next: [bold]proofforge verify[/bold], then [bold]proofforge check[/bold], then [bold]proofforge render[/bold].")
+
+
+@app.command("link")
+def link(
+    claim: str = typer.Option(..., "--claim", help="Claim id, e.g. claim-vuln"),
+    evidence: str = typer.Option(..., "--evidence", help="Comma-separated evidence ids, e.g. ev-001,ev-002"),
+) -> None:
+    """Set which evidence supports a claim (replaces its current links)."""
+    try:
+        session = session_store.load_current()
+    except BBReportError as exc:
+        error(str(exc))
+        raise typer.Exit(code=1)
+    if session.report is None:
+        error("No report yet. Run 'proofforge report new' first.")
+        raise typer.Exit(code=1)
+
+    target = next((c for c in session.report.claims if c.id == claim), None)
+    if target is None:
+        error(f"No claim '{claim}'. Claims: {', '.join(c.id for c in session.report.claims)}")
+        raise typer.Exit(code=1)
+
+    ids = [part.strip() for part in evidence.split(",") if part.strip()]
+    known = {e.id for e in session.evidence}
+    unknown = [i for i in ids if i not in known]
+    if not ids or unknown:
+        error(f"Unknown or missing evidence id(s): {', '.join(unknown) or '(none given)'}. "
+              f"Evidence: {', '.join(sorted(known))}")
+        raise typer.Exit(code=1)
+
+    target.evidence_ids = ids
+    session.report.rebuild_provenance()
+    session.report.reset_checks()
+    session_store.save(session)
+    AuditLogger(session_store.audit_log_path(session.id)).log(
+        actor="user", action="link_evidence", target=claim, result="ok",
+        details={"evidence_ids": ids},
+    )
+    console.print(f"{OK} {claim} now linked to {', '.join(ids)}. Re-run verify and check.")

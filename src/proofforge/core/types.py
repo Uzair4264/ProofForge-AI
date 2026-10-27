@@ -72,6 +72,8 @@ class Field(BaseModel):
     is_required: bool = True
     # For impact: did the evidence demonstrate it, or is it inferred / potential?
     basis: Optional[ImpactBasis] = None
+    # Evidence the value came from (set by inference; empty for typed-in values).
+    evidence_ids: list[str] = PydField(default_factory=list)
 
 
 # --------------------------------------------------------------------------- #
@@ -131,6 +133,14 @@ class Report(BaseModel):
     def reset_checks(self) -> None:
         self.integrity_status = None
         self.compliance_status = None
+
+    def rebuild_provenance(self) -> None:
+        """Derive provenance links from each claim's evidence_ids."""
+        self.provenance = [
+            ProvenanceLink(claim_id=c.id, evidence_id=ev_id)
+            for c in self.claims
+            for ev_id in c.evidence_ids
+        ]
 
 
 # --------------------------------------------------------------------------- #

@@ -89,6 +89,7 @@ def infer_field(
         base.state = FieldState.INFERRED
         base.confidence = confidence
         base.inference_reasoning = reasoning
+        base.evidence_ids = [e.id for e in relevant]
         return base
 
     if value is not None and conf.is_confident(confidence, spec.inference.confidence_threshold):
@@ -96,6 +97,7 @@ def infer_field(
         base.state = FieldState.INFERRED
         base.confidence = confidence
         base.inference_reasoning = reasoning
+        base.evidence_ids = [e.id for e in relevant]
     else:
         base.inference_reasoning = (
             f"Low-confidence inference ({confidence:.2f}): {value!r}"
