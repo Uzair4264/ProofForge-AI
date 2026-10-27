@@ -30,16 +30,18 @@ def extract_json(text: str) -> dict[str, Any]:
         if text.lstrip().lower().startswith("json"):
             text = text.lstrip()[4:]
     try:
-        return json.loads(text)
+        parsed = json.loads(text)
     except json.JSONDecodeError:
-        pass
-    match = _JSON_BLOCK_RE.search(text)
-    if match:
+        match = _JSON_BLOCK_RE.search(text)
+        if not match:
+            raise LLMFormatError("Model output contained no JSON object")
         try:
-            return json.loads(match.group(0))
+            parsed = json.loads(match.group(0))
         except json.JSONDecodeError as exc:
             raise LLMFormatError(f"Could not parse JSON from model output: {exc}") from exc
-    raise LLMFormatError("Model output contained no JSON object")
+    if not isinstance(parsed, dict):
+        raise LLMFormatError(f"Expected a JSON object, got {type(parsed).__name__}")
+    return parsed
 
 
 class LLMBackend(ABC):

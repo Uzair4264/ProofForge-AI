@@ -13,6 +13,7 @@ from typing import Callable
 from ..core.exceptions import LLMError, LLMFormatError
 from ..core.types import Evidence, Field, FieldState
 from ..llm_backends.base import LLMBackend
+from ..llm_backends.verdicts import is_no_answer, parse_confidence
 from ..vuln_classes.schema import FieldSpec, VulnClassTemplate
 from . import confidence as conf
 
@@ -76,8 +77,10 @@ def infer_field(
         return base
 
     value = result.get("value")
-    confidence = float(result.get("confidence", 0.0))
-    reasoning = result.get("reasoning", "")
+    if is_no_answer(value):
+        value = None  # a confident "uncertain" is not a value
+    confidence = parse_confidence(result.get("confidence"))
+    reasoning = str(result.get("reasoning") or "")
 
     # suggest_only fields (e.g., impact draft) are always presented as a draft
     # for review and never auto-confirmed, regardless of confidence.

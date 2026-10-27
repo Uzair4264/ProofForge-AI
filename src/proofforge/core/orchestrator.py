@@ -21,6 +21,7 @@ from ..program_packs.loader import get_pack
 from ..severity_frameworks import cvss_v31
 from ..vuln_classes.engine import build_claims
 from ..vuln_classes.loader import get_template
+from .exceptions import LLMError
 from .types import (
     CheckResult,
     ComplianceReport,
@@ -32,6 +33,12 @@ from .types import (
 )
 
 ProgressFn = Callable[[str, Field], None]
+
+_SEVERITY_ORDER = {"pass": 0, "warn": 1, "block": 2}
+
+
+def _worse(current: str, new: str) -> str:
+    return new if _SEVERITY_ORDER[new] > _SEVERITY_ORDER[current] else current
 
 
 class Orchestrator:
@@ -138,19 +145,39 @@ class Orchestrator:
                 worst = "pass"
                 notes: list[str] = []
                 for ev in related:
-                    verdict = verifier.verify_claim_evidence(self.backend, claim, ev)
-                    supports = str(verdict["supports"]).lower()
-                    if supports in ("false",) and verdict["confidence"] >= 0.7:
+                    # A failed or unreadable verdict means "unverified" (warn), never "pass".
+                    try:
+                        verdict = verifier.verify_claim_evidence(self.backend, claim, ev)
+                    except LLMError as exc:
+                        worst = _worse(worst, "warn")
+                        notes.append(f"{ev.id}: could not be verified ({exc})")
+                        continue
+                    supports = verdict["supports"]
+                    if supports == "false" and verdict["confidence"] >= 0.7:
                         worst = "block"
                         notes.append(f"{ev.id}: not supported ({verdict['reasoning']})")
+                    elif supports == "false":
+                        worst = _worse(worst, "warn")
+                        notes.append(f"{ev.id}: possibly not supported ({verdict['reasoning']})")
                     elif supports == "partial":
-                        worst = "warn" if worst != "block" else worst
+                        worst = _worse(worst, "warn")
                         notes.append(f"{ev.id}: partial support")
+                    elif supports is None:
+                        worst = _worse(worst, "warn")
+                        notes.append(f"{ev.id}: unclear verdict, not verified")
                 if claim.category.value in ("impact_assertion", "vuln_assertion") and related:
-                    over = verifier.detect_overreach(self.backend, claim, related)
-                    if over["overreach"] and over["confidence"] >= 0.7:
-                        worst = "warn" if worst != "block" else worst
-                        notes.append(f"over-reach: {over['reasoning']}")
+                    try:
+                        over = verifier.detect_overreach(self.backend, claim, related)
+                    except LLMError as exc:
+                        worst = _worse(worst, "warn")
+                        notes.append(f"over-reach could not be checked ({exc})")
+                    else:
+                        if over["overreach"] is None:
+                            worst = _worse(worst, "warn")
+                            notes.append("over-reach verdict unclear, not checked")
+                        elif over["overreach"] and over["confidence"] >= 0.7:
+                            worst = _worse(worst, "warn")
+                            notes.append(f"over-reach: {over['reasoning']}")
                 checks.append(CheckResult(
                     name=f"consistency:{claim.id}",
                     status=worst,
