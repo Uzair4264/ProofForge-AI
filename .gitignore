@@ -7,6 +7,9 @@ build/
 dist/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # Virtual envs
 .venv/
@@ -18,19 +21,31 @@ env/
 Thumbs.db
 .vscode/
 .idea/
+.claude/
 
 # Runtime artifacts (should normally live in platformdirs locations, but ignore stray ones)
 *.jsonl
 report.md
 integrity_summary.json
 
-# Evidence and run outputs — never push real captures or generated reports
-evidence/
-examples/
-tests/
+# Real captures and run outputs — never push. Anchored to the repo root so the
+# evidence/ source package inside the code is NOT ignored.
+/evidence/
+/examples/
 
-# Personal docs — not part of the public repo
-linkedin.md
-resume.md
-PLUGIN.md
-PROJECT.md
+# Kept locally, not part of the public repo
+/tests/
+/.github/
+/.gitattributes
+/CHANGELOG.md
+/CONTRIBUTING.md
+/SECURITY.md
+/docs/architecture.md
+/CLAUDE.md
+/CLAUDE.*.md
+/PROJECT.md
+/PROJECT.*.md
+/PLUGIN.md
+/linkedin.md
+/resume.md
+/private/
