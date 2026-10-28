@@ -7,7 +7,9 @@ EVIDENCE:
 {evidence}
 
 Possible values: {options}
+- injection_confirmed: the query is injectable but no data was read
 - data_extraction: reading data the user should not see
+- data_modification: stored data was changed (a write is shown)
 - auth_bypass: authenticating or escalating without valid credentials
 - rce: command execution via the database
 - other: anything else

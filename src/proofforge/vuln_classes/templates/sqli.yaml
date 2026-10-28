@@ -68,10 +68,25 @@ required_fields:
         Any signature that identifies the backend database (error string,
         version() output, time-function behavior).
 
+  - id: timing_measurements
+    label: "Timing measurements"
+    field_type: string
+    is_required: false
+    help:
+      short: "Time-based only: response times for a baseline and two or more delays"
+      long: |
+        ProofForge never replays requests, so record the timings you measured
+        (seconds). Give at least two baseline samples and at least two delay
+        values, each repeated, e.g. "baseline: 0.21, 0.19; 5: 5.24, 5.31; 10: 10.2, 10.4".
+        `verify` checks that every delay is close to its payload and that the
+        delays scale with it, which rules out network jitter and a slow server.
+      examples:
+        - "baseline: 0.21, 0.19, 0.23; 5: 5.24, 5.31; 10: 10.22, 10.40"
+
   - id: impact_category
     label: "Impact category"
     field_type: choice
-    options: [data_extraction, auth_bypass, rce, other]
+    options: [injection_confirmed, data_extraction, data_modification, auth_bypass, rce, other]
     inference:
       from_evidence: [http_request, http_response]
       llm_prompt: "infer_sqli_impact"
@@ -79,7 +94,9 @@ required_fields:
     help:
       short: "What the injection lets an attacker achieve"
       long: |
+        - injection_confirmed: the query is injectable; no data read yet.
         - data_extraction: reading data the user shouldn't see.
+        - data_modification: changing stored data (demonstrated write).
         - auth_bypass: logging in / escalating without valid credentials.
         - rce: command execution via the database.
         - other: explain in the impact field.
@@ -125,14 +142,32 @@ required_evidence:
     required: false
 
 severity_hints:
-  default_cvss_v31: "AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+  # Confirmed injection = the database is readable (7.5). Writes, auth bypass
+  # and command execution must be demonstrated to lift I, A and S.
+  default_cvss_v31: "AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+  lift_rules:
+    - metric: I
+      to: H
+      when: {impact_category: [data_modification, auth_bypass, rce]}
+      note: "a demonstrated write, authentication bypass or command execution"
+    - metric: A
+      to: H
+      when: {impact_category: [data_modification, rce]}
+      note: "a demonstrated write (e.g. stacked query) or command execution"
+    - metric: S
+      to: C
+      when: {impact_category: [rce]}
+      note: "command execution through the database that reaches the host"
   notes: |
     Common adjustments:
     - PR:L/PR:H if authentication is required to reach the injection
-    - C:H/I:N/A:N for read-only blind extraction
-    - S:C if the DBMS allows reaching other components (e.g. RCE, file read)
+    - I:H / A:H only with a demonstrated write, auth bypass or command execution
+    - S:C only if command execution through the DBMS reaches the host
+
+evidence_checks: [boolean_pairs, timing_scaling]
 
 verifier_focus:
   - "Confirm the response shows genuine database behavior, not a generic error"
   - "Confirm extracted data is real, not merely echoed back from the input"
+  - "Blind boolean: confirm true/false requests differ only in the condition"
   - "Flag auth-bypass / RCE claims not demonstrated by the evidence"
