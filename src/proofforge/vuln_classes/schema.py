@@ -79,6 +79,13 @@ class SeverityHints(BaseModel):
     notes: Optional[str] = None
 
 
+class AcceptanceRule(BaseModel):
+    """A finding shape platforms usually reject. Matching it warns, never blocks."""
+
+    when: FieldConditions
+    message: str
+
+
 class VulnClassTemplate(BaseModel):
     vuln_class: str
     display_name: str
@@ -90,6 +97,8 @@ class VulnClassTemplate(BaseModel):
     verifier_focus: list[str] = Field(default_factory=list)
     # Deterministic evidence checks run by `verify` (names in vuln_classes/checks.py).
     evidence_checks: list[str] = Field(default_factory=list)
+    # Pre-check: commonly rejected findings and how to upgrade them (`check`).
+    never_accepted: list[AcceptanceRule] = Field(default_factory=list)
 
     def field(self, field_id: str) -> Optional[FieldSpec]:
         for f in self.required_fields:

@@ -244,6 +244,25 @@ def check_severity(report: Report, pack: RulePack) -> CheckResult:
     )
 
 
+def check_acceptance(report: Report, pack: RulePack) -> CheckResult | None:
+    """Warn when the finding matches a shape platforms usually reject.
+
+    Programs can override these defaults, so this never blocks.
+    """
+    template = _template(report.vuln_class)
+    if template is None or not template.never_accepted:
+        return None
+    hits = [rule.message.strip() for rule in template.never_accepted
+            if severity.conditions_hold(rule.when, report)]
+    if hits:
+        return CheckResult(
+            name="acceptance", status="warn",
+            message=f"Often rejected as submitted: {' '.join(hits)} Check {pack.program_id}'s policy.",
+            details={"matches": hits},
+        )
+    return CheckResult(name="acceptance", status="pass", message="No commonly rejected pattern matched.")
+
+
 def _template(vuln_class: str):
     from ..core.exceptions import BBReportError
     from ..vuln_classes.loader import get_template
@@ -272,6 +291,11 @@ def enforce(
 ) -> ComplianceReport:
     checks: list[CheckResult] = [
         check_scope(report, pack),
+    ]
+    acceptance = check_acceptance(report, pack)
+    if acceptance is not None:
+        checks.append(acceptance)
+    checks += [
         check_required_fields(report, pack),
         check_forbidden_regex(report_text, pack),
     ]
