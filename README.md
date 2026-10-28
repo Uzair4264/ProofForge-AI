@@ -30,23 +30,34 @@ security research to the *report* itself:
 | Source of claims | whatever you type (hallucinates) | **only your real evidence** |
 | Integrity | none | **every claim traced to evidence** (orphan / over-reach checks) |
 | Program rules | ignored | **scope / required fields / forbidden content** enforced |
-| Severity | guessed | **deterministic CVSS v3.1** |
+| Severity | guessed | **deterministic CVSS v3.1, capped at what the evidence demonstrates** |
 | Privacy | sent to the cloud | **local by default** |
 | Auditability | none | **hash-chained, tamper-evident log** |
 
 ## Status (v0)
 
-- **5 vulnerability classes:** XSS, SSRF, IDOR, CSRF, SQLi — each a YAML template (no Python to add more).
+- **7 vulnerability classes:** XSS, SSRF, IDOR, CSRF, SQLi, information disclosure, open redirect —
+  each a YAML template (no Python to add more). Access control, auth bypass / account takeover and RCE
+  are next.
 - **Full 6-stage pipeline:** ingestion & classification → inference → adaptive elicitation → integrity
   verification → compliance enforcement → rendering.
 - **Local LLM** via Ollama (`qwen2.5:3b-instruct-q4_K_M`), with an offline **mock** backend and an
   opt-in cloud backend behind the same interface.
 - **Deterministic core:** CVSS v3.1, scope/field/forbidden-content checks, claim→evidence DAG,
   hash-chained audit log.
-- **Offline mode:** all five classes run end-to-end on the built-in mock backend (no model needed).
+- **Evidence-derived severity ceiling:** each class starts at what the bare finding proves, and each
+  CVSS metric can only rise when its own evidence is shown (e.g. SQLi starts at 7.5; integrity and
+  availability impact need a demonstrated write or code execution).
+- **Deterministic evidence checks (no LLM):** requests from two distinct accounts or roles (compared by
+  credential hash, never the token), blind SQLi true/false response pairs, time-based SQLi delays that
+  scale with the payload (researcher-entered timings; ProofForge never replays requests), and open
+  redirects that actually leave the target's site.
+- **"Usually rejected" pre-check:** warns before you submit findings platforms commonly close as N/A or
+  P5 (bare open redirects, version banners, keys meant to be public) and says how to upgrade them.
+- **Offline mode:** every class runs end-to-end on the built-in mock backend (no model needed).
 - **Live-validated once so far:** a real OWASP Juice Shop DOM-XSS, captured in Burp, run through the
-  full pipeline on the local model. The other four classes have not yet been validated against a
-  live model and real evidence.
+  full pipeline on the local model. The other classes have not yet been validated against a live
+  model and real evidence.
 
 Several integrity and compliance checks are still being hardened.
 

@@ -15,8 +15,8 @@ flowchart TD
     A --> S1["STAGE 1 — Ingestion & Classification<br/><i>parse evidence, hash + provenance,<br/>LLM classifies vuln class</i>"]
     S1 --> S2["STAGE 2 — Inference Engine<br/><i>LLM pre-fills template fields<br/>from the evidence (with confidence)</i>"]
     S2 --> S3["STAGE 3 — Adaptive Elicitation<br/><i>confirm inferred values;<br/>ask only what's missing</i>"]
-    S3 --> S4["STAGE 4 — Integrity / Gap 1<br/><i>claim→evidence DAG:<br/>orphan, over-reach, consistency</i>"]
-    S4 --> S5["STAGE 5 — Compliance / Gap 3<br/><i>scope, required fields,<br/>forbidden content, CVSS v3.1</i>"]
+    S3 --> S4["STAGE 4 — Integrity / Gap 1<br/><i>claim→evidence DAG:<br/>orphan, over-reach, consistency,<br/>deterministic evidence checks</i>"]
+    S4 --> S5["STAGE 5 — Compliance / Gap 3<br/><i>scope, required fields,<br/>forbidden content, usually-rejected<br/>pre-check, evidence-capped CVSS v3.1</i>"]
     S5 --> S6["STAGE 6 — Rendering<br/><i>program-formatted, dual-audience<br/>report with evidence refs</i>"]
     S6 --> O["📤 OUTPUT<br/>report.md · integrity_summary.json<br/>· hash-chained audit.jsonl"]:::io
 
@@ -41,7 +41,7 @@ flowchart TD
     CLI --> ORCH["core/orchestrator.py<br/><i>drives the 6 stages; no domain logic</i>"]
 
     ORCH --> INF["inference/engine.py<br/>field inference"]
-    ORCH --> VCE["vuln_classes/engine.py<br/>+ templates/*.yaml<br/>(XSS·SSRF·IDOR·CSRF·SQLi)"]
+    ORCH --> VCE["vuln_classes/engine.py<br/>+ templates/*.yaml<br/>(XSS·SSRF·IDOR·CSRF·SQLi·<br/>info disclosure·open redirect)"]
     ORCH --> EVID["evidence/<br/>ingester · provenance DAG · verifier"]
     ORCH --> ENF["program_packs/enforcer.py<br/>+ packs/*.yaml"]
     ORCH --> SEV["severity_frameworks/<br/>cvss_v31.py"]
@@ -81,8 +81,10 @@ refactor. Vulnerability classes and program rules are **data (YAML), not code**.
    STAGE 3  Adaptive Elicitation        confirm inferred · ask the rest
                                     ▼
    STAGE 4  Integrity  (Gap 1)          claim→evidence DAG: orphan / over-reach (LLM)
+                                        + deterministic evidence checks
                                     ▼
-   STAGE 5  Compliance (Gap 3)          scope · required fields · CVSS v3.1
+   STAGE 5  Compliance (Gap 3)          scope · required fields · "usually rejected"
+                                        pre-check · evidence-capped CVSS v3.1
                                     ▼
    STAGE 6  Rendering                   program-formatted dual-audience report
                                     ▼
