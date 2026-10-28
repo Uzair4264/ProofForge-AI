@@ -139,6 +139,25 @@ _CANNED: dict[str, dict] = {
         "confidence": 0.6,
         "reasoning": "Data extraction demonstrated; auth bypass/RCE not shown.",
     },
+    # --- Information disclosure ---
+    "infer_disclosure_type": {
+        "value": "config_backup_file", "confidence": 0.8,
+        "reasoning": "The response is an environment file with configuration values.",
+    },
+    "infer_disclosure_classification": {
+        "value": "secret_unverified", "confidence": 0.75,
+        "reasoning": "A credential-like value is exposed; nothing shows it works.",
+    },
+    "infer_disclosure_scope": {
+        "value": "org_wide", "confidence": 0.7,
+        "reasoning": "The file holds the organization's own configuration.",
+    },
+    "draft_disclosure_impact": {
+        "value": "An unauthenticated attacker can read the application's configuration file, "
+                 "which contains a credential-like value that has not been shown to work.",
+        "confidence": 0.6,
+        "reasoning": "Exposure demonstrated; whether the secret is live is not shown.",
+    },
     "verify_claim": {
         "supports": "true",
         "confidence": 0.9,

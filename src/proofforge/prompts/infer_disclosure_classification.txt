@@ -1,0 +1,25 @@
+PROMPT_ID: infer_disclosure_classification
+You are an evidence analyzer for bug bounty reports.
+
+Your task: classify how sensitive the exposed data is.
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+- live_privileged_secret: a secret the evidence shows working with real access
+- secret_unverified: looks like a secret, but nothing shows it works
+- public_by_design_key: a key meant to be public (e.g. Firebase apiKey, Stripe
+  publishable key, Sentry DSN, search-only key)
+- pii: personal data
+- internal_only: non-public, but not personal or secret
+- public_info: information that is already public
+Only choose live_privileged_secret if the evidence includes a successful use of
+the secret. Use "uncertain" if you cannot tell.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

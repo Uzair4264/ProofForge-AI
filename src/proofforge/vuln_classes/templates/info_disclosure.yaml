@@ -1,0 +1,203 @@
+vuln_class: info_disclosure
+display_name: "Information Disclosure"
+cwe: CWE-200
+subtypes:
+  - secret_credential
+  - pii_other_users
+  - source_code
+  - config_backup_file
+  - debug_interface
+  - token_leak
+  - error_or_banner
+  - internal_metadata
+
+required_fields:
+  - id: affected_endpoint
+    label: "Exposure location"
+    field_type: url
+    validation: valid_url
+    inference:
+      from_evidence: [http_request]
+      llm_prompt: "infer_endpoint_from_request"
+      confidence_threshold: 0.8
+    help:
+      short: "The URL that returns the exposed data"
+      long: |
+        The exact resource (page, API response, file, JS bundle) where the
+        data is exposed.
+      examples:
+        - "https://app.example.com/.env"
+        - "https://app.example.com/static/js/main.4f2a.js"
+
+  - id: exposure_type
+    label: "Exposure type"
+    field_type: choice
+    options: [secret_credential, pii_other_users, source_code, config_backup_file, debug_interface, token_leak, error_or_banner, internal_metadata]
+    inference:
+      from_evidence: [http_request, http_response]
+      llm_prompt: "infer_disclosure_type"
+      confidence_threshold: 0.7
+    help:
+      short: "What kind of data is exposed?"
+      long: |
+        - secret_credential: API key, cloud key, password, private key, signing secret.
+        - pii_other_users: other users' personal data.
+        - source_code: e.g. a reconstructible /.git/ folder or source maps.
+        - config_backup_file: .env, config or backup files.
+        - debug_interface: an exposed debug or admin console.
+        - token_leak: session or reset tokens leaking (URL, Referer, third party).
+        - error_or_banner: stack traces, verbose errors, version banners.
+        - internal_metadata: internal IPs, hostnames, paths.
+
+  - id: data_classification
+    label: "Data classification"
+    field_type: choice
+    options: [live_privileged_secret, secret_unverified, public_by_design_key, pii, internal_only, public_info]
+    inference:
+      from_evidence: [http_response]
+      llm_prompt: "infer_disclosure_classification"
+      confidence_threshold: 0.7
+    help:
+      short: "How sensitive is the exposed data?"
+      long: |
+        Platforms rate a disclosure by whether the data is live, non-public
+        and privileged, not by the fact that it appeared.
+        - live_privileged_secret: a working secret with real access.
+        - secret_unverified: looks like a secret, not yet shown to work.
+        - public_by_design_key: meant to be public (e.g. Firebase apiKey,
+          Stripe pk_live_, Sentry DSN, search-only keys).
+        - pii: personal data.
+        - internal_only: non-public but not personal or secret.
+        - public_info: already public.
+
+  - id: secret_validation
+    label: "Secret validation"
+    field_type: choice
+    options: [not_applicable, not_validated, read_access, write_access, other_systems]
+    help:
+      short: "For secrets: what did one safe validation call show?"
+      long: |
+        Prove a secret is live with one read-only call (e.g. an identity or
+        account lookup). Never write, delete or pull data in bulk with it.
+        - not_applicable: no secret involved.
+        - not_validated: you did not test it.
+        - read_access: it works and grants read access.
+        - write_access: its scope/permissions show write access (read the
+          scope; do not prove it by writing).
+        - other_systems: it reaches a different system (cloud account, SaaS).
+
+  - id: affected_scope
+    label: "Whose data"
+    field_type: choice
+    options: [own_account, other_user, many_users, org_wide]
+    inference:
+      from_evidence: [http_request, http_response]
+      llm_prompt: "infer_disclosure_scope"
+      confidence_threshold: 0.7
+    help:
+      short: "Whose data is exposed?"
+      long: |
+        - own_account: only your own data (not a disclosure on its own).
+        - other_user: one other user (show two accounts: A sees B).
+        - many_users: many users or enumerable records.
+        - org_wide: the organization's own secrets or systems.
+
+  - id: impact_description
+    label: "Impact description"
+    field_type: long_text
+    editor: true
+    inference:
+      from_evidence: [http_request, http_response, screenshot]
+      llm_prompt: "draft_disclosure_impact"
+      confidence_threshold: 0.0
+      mode: suggest_only
+    help:
+      short: "What can an attacker do with the exposed data?"
+      long: |
+        Describe what the data gives an attacker, based only on what you
+        showed. Redact secrets in the report (keep a prefix).
+
+  - id: remediation
+    label: "Suggested remediation"
+    field_type: long_text
+    editor: true
+    is_required: false
+    help:
+      short: "How should the developers fix it? (optional)"
+      long: |
+        Suggest a concrete fix the developers can apply. Optional, but many
+        programs (HackerOne, Bugcrowd) expect a remediation section.
+      examples:
+        - "Rotate the exposed key now, remove it from the bundle and load it server-side."
+        - "Block public access to /.git/ and other deployment artifacts."
+
+required_evidence:
+  - type: http_request
+    description: "Request that retrieves the exposed resource"
+    required: true
+  - type: http_response
+    description: "Response containing the exposed data (redact secrets in the report)"
+    required: true
+  - type: log_output
+    description: "One safe, read-only validation call showing a secret is live"
+    required: false
+    note: "Without it, a secret stays at the unverified ceiling"
+
+severity_hints:
+  # Internal, non-public data read without authentication (5.3).
+  default_cvss_v31: "AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"
+  ceiling_tiers:
+    - when: {data_classification: [public_info, public_by_design_key]}
+      ceiling: "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N"
+      note: "Public data causes no loss of confidentiality"
+    - when: {exposure_type: [error_or_banner, internal_metadata]}
+      ceiling: "AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"
+      note: "Errors, banners and internal metadata only help other attacks"
+  lift_rules:
+    - metric: C
+      to: H
+      when: {secret_validation: [read_access, write_access, other_systems]}
+      note: "a safe validation call showing the secret is live"
+    - metric: C
+      to: H
+      when: {data_classification: [pii], affected_scope: [other_user, many_users, org_wide]}
+      note: "other users' personal data shown in the response"
+    - metric: I
+      to: H
+      when: {secret_validation: [write_access, other_systems]}
+      note: "a validated secret whose permissions include writes"
+    - metric: S
+      to: C
+      when: {secret_validation: [other_systems]}
+      note: "a validated secret that reaches a different system"
+  notes: |
+    Common adjustments:
+    - PR:L if authentication is needed to reach the exposed resource
+    - C:H only for a validated live secret or other users' personal data
+    - I:H / S:C only from a validated secret's write scope / other systems
+
+never_accepted:
+  - when: {exposure_type: [error_or_banner, internal_metadata]}
+    message: >-
+      Stack traces, version banners, internal IPs and paths are ineligible on
+      HackerOne and P5 on Bugcrowd unless they leak something exploitable
+      (credentials, session data, a confirmed injection). If they do, report the
+      chained bug instead.
+  - when: {data_classification: [public_by_design_key, public_info]}
+    message: >-
+      Keys meant to be public and already-public information are P5. Show the key
+      reaches something paid or private (e.g. an unrestricted cloud API).
+  - when: {secret_validation: [not_validated]}
+    message: >-
+      An untested secret may be a sample, revoked or public. Show one safe,
+      read-only call proving it is live (no writes, no bulk reads).
+  - when: {affected_scope: [own_account]}
+    message: >-
+      Seeing your own data is not a disclosure. Show another user's data (two
+      accounts: A sees B).
+
+verifier_focus:
+  - "Confirm the response actually contains the claimed data"
+  - "Confirm a 'secret' is not a key meant to be public or a sample value"
+  - "Confirm 'other users' data' shows an identifier different from the requester's"
+  - "Flag 'the key can access X' claims without a matching validation response"
