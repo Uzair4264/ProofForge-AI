@@ -19,10 +19,11 @@ from ..output_formats import get_renderer
 from ..program_packs import enforcer as compliance
 from ..program_packs.loader import get_pack
 from ..severity_frameworks import cvss_v31
+from ..vuln_classes import checks as evidence_checks
 from ..vuln_classes import severity
 from ..vuln_classes.engine import build_claims
 from ..vuln_classes.loader import get_template
-from .exceptions import LLMError
+from .exceptions import BBReportError, LLMError
 from .types import (
     CheckResult,
     ComplianceReport,
@@ -132,6 +133,13 @@ class Orchestrator:
             ))
         else:
             checks.append(CheckResult(name="hash_integrity", status="pass", message="Evidence hashes intact."))
+
+        # Class-specific deterministic evidence checks (advisory).
+        try:
+            check_names = get_template(report.vuln_class).evidence_checks
+        except BBReportError:
+            check_names = []
+        checks.extend(evidence_checks.run(check_names, report, evidence))
 
         # 4 & 5. LLM-backed consistency + over-reach (advisory).
         if run_llm:

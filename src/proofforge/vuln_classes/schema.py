@@ -88,6 +88,8 @@ class VulnClassTemplate(BaseModel):
     required_evidence: list[RequiredEvidenceSpec] = Field(default_factory=list)
     severity_hints: Optional[SeverityHints] = None
     verifier_focus: list[str] = Field(default_factory=list)
+    # Deterministic evidence checks run by `verify` (names in vuln_classes/checks.py).
+    evidence_checks: list[str] = Field(default_factory=list)
 
     def field(self, field_id: str) -> Optional[FieldSpec]:
         for f in self.required_fields:
