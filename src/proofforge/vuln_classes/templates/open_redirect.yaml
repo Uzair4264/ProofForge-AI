@@ -1,0 +1,172 @@
+vuln_class: open_redirect
+display_name: "Open Redirect"
+cwe: CWE-601
+subtypes:
+  - server_30x
+  - meta_refresh
+  - js_location
+  - header_based
+  - post_based
+
+required_fields:
+  - id: affected_endpoint
+    label: "Affected endpoint URL"
+    field_type: url
+    validation: valid_url
+    inference:
+      from_evidence: [http_request]
+      llm_prompt: "infer_endpoint_from_request"
+      confidence_threshold: 0.8
+    help:
+      short: "The URL that performs the redirect"
+      long: |
+        The endpoint, with the redirect parameter, that sends the browser to
+        an attacker-chosen site.
+      examples:
+        - "https://app.example.com/login?next=https://attacker.example"
+
+  - id: redirect_parameter
+    label: "Redirect parameter"
+    field_type: string
+    validation: non_empty
+    inference:
+      from_evidence: [http_request]
+      llm_prompt: "infer_redirect_param"
+      confidence_threshold: 0.75
+    help:
+      short: "The parameter that controls the destination"
+      examples:
+        - "next"
+        - "returnUrl"
+
+  - id: redirect_type
+    label: "Redirect type"
+    field_type: choice
+    options: [server_30x, meta_refresh, js_location, header_based, post_based]
+    inference:
+      from_evidence: [http_request, http_response]
+      llm_prompt: "infer_redirect_type"
+      confidence_threshold: 0.7
+    help:
+      short: "How the redirect happens"
+      long: |
+        - server_30x: a 3xx response with a Location header.
+        - meta_refresh: an HTML meta refresh tag.
+        - js_location: JavaScript sets the location (needs a browser capture).
+        - header_based: driven by a request header (Host, X-Forwarded-Host).
+        - post_based: only reachable with a POST request.
+
+  - id: user_interaction
+    label: "User interaction"
+    field_type: choice
+    options: [single_click, requires_login, interstitial_shown]
+    help:
+      short: "What the victim must do"
+      long: |
+        - single_click: opening the link redirects immediately.
+        - requires_login: the victim must log in first.
+        - interstitial_shown: a "you are leaving" page is shown first.
+
+  - id: chained_impact
+    label: "Chained impact"
+    field_type: choice
+    options: [none, oauth_token_theft, token_leakage, allowlist_bypass, ssrf_bypass, xss_javascript_uri]
+    help:
+      short: "What the redirect leads to, if anything"
+      long: |
+        A bare open redirect is rarely accepted. The chain is the finding.
+        - none: the redirect alone.
+        - oauth_token_theft: an OAuth code/token reaches your server (show it
+          captured and redeemed).
+        - token_leakage: a reset or magic-link token leaks to your server.
+        - allowlist_bypass: it defeats a CSP, Referer/Origin or webhook allowlist.
+        - ssrf_bypass: a server-side fetch follows it (report as SSRF).
+        - xss_javascript_uri: a javascript: URL runs (report as XSS).
+
+  - id: impact_description
+    label: "Impact description"
+    field_type: long_text
+    editor: true
+    inference:
+      from_evidence: [http_request, http_response, screenshot]
+      llm_prompt: "draft_redirect_impact"
+      confidence_threshold: 0.0
+      mode: suggest_only
+    help:
+      short: "What can an attacker do with the redirect?"
+      long: |
+        Describe the demonstrated chain. Phishing on its own is rarely
+        accepted; only claim token theft if a token was captured.
+
+  - id: remediation
+    label: "Suggested remediation"
+    field_type: long_text
+    editor: true
+    is_required: false
+    help:
+      short: "How should the developers fix it? (optional)"
+      long: |
+        Suggest a concrete fix the developers can apply. Optional, but many
+        programs (HackerOne, Bugcrowd) expect a remediation section.
+      examples:
+        - "Only accept relative paths, or map destinations to an allowlist of IDs."
+        - "Match OAuth redirect_uri values exactly instead of by prefix."
+
+required_evidence:
+  - type: http_request
+    description: "Request carrying an attacker-chosen destination"
+    required: true
+  - type: http_response
+    description: "Response redirecting to that destination (3xx Location or meta refresh)"
+    required: true
+  - type: screenshot
+    description: "Browser capture of the final URL (needed for JavaScript redirects)"
+    required: false
+
+severity_hints:
+  # A plain GET redirect: phishing-grade integrity impact only (4.3).
+  default_cvss_v31: "AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:N"
+  ceiling_tiers:
+    - when: {redirect_type: [header_based, post_based]}
+      ceiling: "AV:N/AC:H/PR:N/UI:R/S:U/C:N/I:L/A:N"
+      note: "A victim cannot trigger it with a link"
+    - when: {user_interaction: [requires_login, interstitial_shown]}
+      ceiling: "AV:N/AC:H/PR:N/UI:R/S:U/C:N/I:L/A:N"
+      note: "Extra steps stand between the link and the redirect"
+  lift_rules:
+    - metric: C
+      to: H
+      when: {chained_impact: [oauth_token_theft, token_leakage]}
+      note: "a captured OAuth code or leaked token, redeemed for access"
+    - metric: I
+      to: H
+      when: {chained_impact: [oauth_token_theft, token_leakage]}
+      note: "a captured OAuth code or leaked token, redeemed for access"
+  notes: |
+    Common adjustments:
+    - C:H / I:H only when a captured code or token is redeemed (account takeover, 8.1)
+    - SSRF and javascript: XSS chains belong in the ssrf / xss templates
+
+never_accepted:
+  - when: {chained_impact: [none]}
+    message: >-
+      A bare open redirect is ineligible on HackerOne and Google; Bugcrowd rates
+      GET-based P4 at best. Upgrade by showing OAuth token capture, token leakage
+      or an allowlist bypass.
+  - when: {redirect_type: [header_based, post_based]}
+    message: >-
+      Header- and POST-based redirects can't be triggered with a link (Bugcrowd P5).
+  - when: {user_interaction: [requires_login, interstitial_shown]}
+    message: >-
+      A redirect behind a login or a warning page is usually not accepted.
+  - when: {chained_impact: [ssrf_bypass, xss_javascript_uri]}
+    message: >-
+      Report this under the SSRF or XSS class: the chain is the finding and the
+      redirect is how it is delivered.
+
+evidence_checks: [redirect_offsite]
+
+verifier_focus:
+  - "Confirm the destination host is outside the target's site, not a look-alike path"
+  - "Confirm the redirect happens without extra steps (login, warning page)"
+  - "Flag token-theft claims without a captured, redeemed code or token"

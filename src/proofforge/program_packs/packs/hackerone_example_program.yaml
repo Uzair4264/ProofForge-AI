@@ -21,6 +21,7 @@ scope:
     - "rce"
     - "auth_bypass"
     - "info_disclosure"
+    - "open_redirect"
   out_of_scope_vuln_types:
     - "self_xss"
     - "missing_security_headers_no_impact"

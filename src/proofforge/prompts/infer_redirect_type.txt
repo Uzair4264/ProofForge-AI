@@ -1,0 +1,22 @@
+PROMPT_ID: infer_redirect_type
+You are an evidence analyzer for bug bounty reports.
+
+Your task: classify how the response redirects the browser.
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+- server_30x: a 3xx response with a Location header
+- meta_refresh: an HTML meta refresh tag
+- js_location: JavaScript sets the page location
+- header_based: the destination comes from a request header (Host, X-Forwarded-Host)
+- post_based: the redirect only happens on a POST request
+Use "uncertain" if you cannot tell.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

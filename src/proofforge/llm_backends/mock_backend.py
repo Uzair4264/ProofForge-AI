@@ -158,6 +158,21 @@ _CANNED: dict[str, dict] = {
         "confidence": 0.6,
         "reasoning": "Exposure demonstrated; whether the secret is live is not shown.",
     },
+    # --- Open redirect ---
+    "infer_redirect_param": {
+        "value": "next", "confidence": 0.85,
+        "reasoning": "The next parameter holds the destination URL.",
+    },
+    "infer_redirect_type": {
+        "value": "server_30x", "confidence": 0.8,
+        "reasoning": "The response is a 302 with a Location header.",
+    },
+    "draft_redirect_impact": {
+        "value": "An attacker can craft a link on the target's domain that sends the victim "
+                 "to an attacker-controlled site.",
+        "confidence": 0.6,
+        "reasoning": "The redirect is demonstrated; no chained token theft is shown.",
+    },
     "verify_claim": {
         "supports": "true",
         "confidence": 0.9,

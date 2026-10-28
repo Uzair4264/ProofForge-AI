@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import re
 from typing import Callable, Optional
+from urllib.parse import urlsplit
 
 from ..core.types import CheckResult, Evidence, Report
 
@@ -210,10 +211,74 @@ def check_timing_scaling(report: Report, evidence: list[Evidence]) -> CheckResul
     )
 
 
+_META_REFRESH_RE = re.compile(
+    r"""<meta[^>]+http-equiv\s*=\s*["']?refresh["']?[^>]*content\s*=\s*["'][^"']*?url\s*=\s*([^"'>\s]+)""",
+    re.IGNORECASE,
+)
+
+
+def _host(url: str) -> str:
+    """Host a browser would go to, or "" for a same-site relative path."""
+    text = url.strip().replace("\\", "/")  # browsers read "/\evil" as "//evil"
+    if "://" not in text and not text.startswith("//"):
+        return ""
+    return (urlsplit(text if "://" in text else f"https:{text}").hostname or "").lower()
+
+
+def _same_site(host: str, target: str) -> bool:
+    # Approximation without the public-suffix list: same last two labels.
+    site = ".".join(target.split(".")[-2:])
+    return host == target or host == site or host.endswith("." + site)
+
+
+def check_redirect_offsite(report: Report, evidence: list[Evidence]) -> CheckResult:
+    """Open redirect: a captured response must send the browser off the target's site."""
+    name = "evidence:redirect_offsite"
+    requests = _of_type(evidence, "http_request")
+    responses = _of_type(evidence, "http_response")
+    target = ""
+    for source in [str(r.metadata.get("url", "")) for r in requests] + [str(report.field_value("affected_endpoint") or "")]:
+        target = _host(source)
+        if target:
+            break
+    if not responses or not target:
+        return CheckResult(
+            name=name, status="warn",
+            message="Capture the request to the target and the response that redirects, so the "
+                    "destination can be checked.",
+        )
+    destinations = []
+    for ev in responses:
+        status = ev.metadata.get("status_code")
+        location = _headers(ev).get("location")
+        if location and isinstance(status, int) and 300 <= status < 400:
+            destinations.append(location)
+        destinations += _META_REFRESH_RE.findall(str(ev.metadata.get("body", "")))
+    if not destinations:
+        return CheckResult(
+            name=name, status="warn",
+            message="No 3xx Location or meta refresh in the captured responses. A JavaScript "
+                    "redirect needs a browser capture (screenshot) of the final URL.",
+        )
+    offsite = [(d, _host(d)) for d in destinations if _host(d) and not _same_site(_host(d), target)]
+    if not offsite:
+        return CheckResult(
+            name=name, status="warn",
+            message=f"Every captured redirect stays on {target}'s site, so no open redirect is shown.",
+            details={"destinations": destinations},
+        )
+    return CheckResult(
+        name=name, status="pass",
+        message=f"Redirects to {offsite[0][1]}, outside {target}'s site.",
+        details={"destinations": destinations, "target": target},
+    )
+
+
 CHECKS: dict[str, CheckFn] = {
     "distinct_identities": check_distinct_identities,
     "boolean_pairs": check_boolean_pairs,
     "timing_scaling": check_timing_scaling,
+    "redirect_offsite": check_redirect_offsite,
 }
 
 

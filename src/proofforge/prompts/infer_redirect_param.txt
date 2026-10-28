@@ -1,0 +1,17 @@
+PROMPT_ID: infer_redirect_param
+You are an evidence analyzer for bug bounty reports.
+
+Your task: identify the request parameter that controls the redirect destination.
+
+EVIDENCE:
+{evidence}
+
+Give only the parameter name (e.g. "next", "returnUrl"). Use "uncertain" if you
+cannot tell.
+
+Respond with a JSON object only:
+{{
+  "value": "<the parameter name, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}
