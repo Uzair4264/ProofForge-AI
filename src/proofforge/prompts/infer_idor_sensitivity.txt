@@ -1,0 +1,21 @@
+PROMPT_ID: infer_idor_sensitivity
+You are an evidence analyzer for bug bounty reports.
+
+Your task: classify how sensitive the data in the response is.
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+- non_sensitive: public or low-value fields (display name, avatar)
+- personal_data: PII such as email, address, phone number, order history
+- sensitive_data: financial, health, private messages or documents
+- credentials: tokens, password-reset links, API keys
+Judge only the data visible in the evidence. Use "uncertain" if you cannot tell.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

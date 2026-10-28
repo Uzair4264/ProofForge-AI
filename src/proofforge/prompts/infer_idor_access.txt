@@ -1,0 +1,20 @@
+PROMPT_ID: infer_idor_access
+You are an evidence analyzer for bug bounty reports.
+
+Your task: classify what the request did to the other user's object.
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+- read: the object was only viewed
+- write: the object was changed (the evidence shows the change persisted)
+- delete: the object was removed
+Use "uncertain" if you cannot tell. A 200 response alone does not prove a write.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

@@ -86,6 +86,14 @@ _CANNED: dict[str, dict] = {
         "value": "single_account", "confidence": 0.75,
         "reasoning": "Another object id was accessed; second-account proof not shown.",
     },
+    "infer_idor_access": {
+        "value": "read", "confidence": 0.8,
+        "reasoning": "The response returns the record; no change is shown.",
+    },
+    "infer_idor_sensitivity": {
+        "value": "personal_data", "confidence": 0.75,
+        "reasoning": "The record includes another user's email address.",
+    },
     "draft_idor_impact": {
         "value": "An attacker can read another user's record by changing the object id.",
         "confidence": 0.6,

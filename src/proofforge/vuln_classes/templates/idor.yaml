@@ -73,6 +73,37 @@ required_fields:
         - claimed: you infer cross-user impact but did not demonstrate it.
         Two-account proof is the gold standard for IDOR.
 
+  - id: access_type
+    label: "Access type"
+    field_type: choice
+    options: [read, write, delete]
+    inference:
+      from_evidence: [http_request, http_response]
+      llm_prompt: "infer_idor_access"
+      confidence_threshold: 0.7
+    help:
+      short: "What you did to the other user's object"
+      long: |
+        - read: viewed it.
+        - write: changed it (confirm with a follow-up request that the change persisted).
+        - delete: removed it.
+
+  - id: data_sensitivity
+    label: "Data sensitivity"
+    field_type: choice
+    options: [non_sensitive, personal_data, sensitive_data, credentials]
+    inference:
+      from_evidence: [http_response]
+      llm_prompt: "infer_idor_sensitivity"
+      confidence_threshold: 0.7
+    help:
+      short: "How sensitive is the object you reached?"
+      long: |
+        - non_sensitive: public or low-value fields (display name, avatar).
+        - personal_data: PII such as email, address, phone, orders.
+        - sensitive_data: financial, health, private messages or documents.
+        - credentials: tokens, password-reset links, API keys.
+
   - id: impact_description
     label: "Impact description"
     field_type: long_text
@@ -115,12 +146,32 @@ required_evidence:
     note: "Two-account reproduction is strongly recommended"
 
 severity_hints:
-  default_cvss_v31: "AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+  # One other user's object read (4.3), the same starting point as a vertical
+  # access_control read, so choosing either class cannot raise the ceiling.
+  default_cvss_v31: "AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N"
+  lift_rules:
+    - metric: C
+      to: H
+      when: {data_sensitivity: [personal_data, sensitive_data, credentials]}
+      note: "demonstrated access to another user's personal, sensitive or credential data"
+    - metric: I
+      to: H
+      when: {access_type: [write, delete]}
+      note: "a demonstrated change to another user's object, confirmed by a follow-up request"
+    - metric: A
+      to: H
+      when: {access_type: [delete]}
+      note: "a demonstrated deletion of another user's object"
+    - metric: PR
+      to: N
+      note: "a demonstrated request with no session reaching the object"
   notes: |
     Common adjustments:
-    - I:H / A:H if the IDOR allows modifying or deleting other users' objects
+    - C:H for personal, sensitive or credential data (demonstrated)
+    - I:H / A:H if the IDOR modifies or deletes other users' objects (demonstrated)
     - PR:N if the endpoint is reachable without authentication
-    - C:L if only limited/non-sensitive fields are exposed
+
+evidence_checks: [distinct_identities]
 
 verifier_focus:
   - "Confirm the two requests are made by (or for) different users"
