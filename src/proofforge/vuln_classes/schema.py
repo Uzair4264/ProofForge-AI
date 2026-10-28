@@ -43,8 +43,39 @@ class RequiredEvidenceSpec(BaseModel):
     note: Optional[str] = None
 
 
+# A condition on resolved field values: {field_id: [accepted values]}. Every
+# listed field must hold one of its values (case-insensitive); empty = always.
+FieldConditions = dict[str, list[str]]
+
+
+class CeilingTier(BaseModel):
+    """A ceiling that replaces the default when its field conditions hold."""
+
+    when: FieldConditions
+    ceiling: str
+    note: Optional[str] = None
+
+
+class LiftRule(BaseModel):
+    """Lets one CVSS metric rise above the ceiling, up to ``to``.
+
+    Applies only when ``when`` holds and, if ``demonstrated``, an impact claim
+    is marked demonstrated and linked to evidence.
+    """
+
+    metric: str
+    to: str
+    when: FieldConditions = Field(default_factory=dict)
+    demonstrated: bool = True
+    note: Optional[str] = None
+
+
 class SeverityHints(BaseModel):
     default_cvss_v31: Optional[str] = None
+    # First matching tier sets the ceiling; none matching = default_cvss_v31.
+    ceiling_tiers: list[CeilingTier] = Field(default_factory=list)
+    # None = legacy rule: any demonstrated, linked impact lifts every metric.
+    lift_rules: Optional[list[LiftRule]] = None
     notes: Optional[str] = None
 
 

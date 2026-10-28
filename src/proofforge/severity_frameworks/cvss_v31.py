@@ -130,6 +130,18 @@ def escalations(claimed: str, baseline: str) -> list[str]:
     return out
 
 
+def raise_metric(vector: str, metric: str, value: str) -> str:
+    """``vector`` with ``metric`` raised to ``value`` (never lowered)."""
+    m = parse_vector(vector)
+    metric, value = metric.upper(), value.upper()
+    order = _SEVERITY_ORDER.get(metric)
+    if order is None or value not in order:
+        raise SeverityError(f"Unknown metric value {metric}:{value}")
+    if order.index(value) > order.index(m[metric]):
+        m[metric] = value
+    return "/".join(f"{k}:{m[k]}" for k in _REQUIRED)
+
+
 def cap_vector(claimed: str, ceiling: str) -> str:
     """``claimed`` with every metric lowered to at most ``ceiling``'s severity."""
     c, ceil = parse_vector(claimed), parse_vector(ceiling)

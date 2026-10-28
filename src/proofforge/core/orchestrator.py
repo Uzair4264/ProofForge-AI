@@ -19,6 +19,7 @@ from ..output_formats import get_renderer
 from ..program_packs import enforcer as compliance
 from ..program_packs.loader import get_pack
 from ..severity_frameworks import cvss_v31
+from ..vuln_classes import severity
 from ..vuln_classes.engine import build_claims
 from ..vuln_classes.loader import get_template
 from .exceptions import LLMError
@@ -83,9 +84,8 @@ class Orchestrator:
             claims=claims,
         )
 
-        vector = severity_vector or (
-            template.severity_hints.default_cvss_v31 if template.severity_hints else None
-        )
+        # Start at the evidence-derived ceiling (default or matching tier).
+        vector = severity_vector or severity.base_ceiling(template, report)
         if vector:
             result = cvss_v31.base_score(vector)
             report.severity_vector = result.vector
