@@ -1,0 +1,137 @@
+vuln_class: rce
+display_name: "Remote Code Execution"
+cwe: CWE-94
+subtypes:
+  - command_injection
+  - deserialization
+  - template_injection
+  - upload_to_execution
+
+required_fields:
+  - id: affected_endpoint
+    label: "Affected endpoint URL"
+    field_type: url
+    validation: valid_url
+    inference:
+      from_evidence: [http_request]
+      llm_prompt: "infer_endpoint_from_request"
+      confidence_threshold: 0.8
+    help:
+      short: "The endpoint where code or commands run"
+      long: |
+        The resource whose request is processed as code or a command on the
+        server.
+      examples:
+        - "https://app.example.com/api/import"
+        - "https://app.example.com/render?template="
+
+  - id: subtype
+    label: "Execution class"
+    field_type: choice
+    options: [command_injection, deserialization, template_injection, upload_to_execution]
+    inference:
+      from_evidence: [http_request, http_response]
+      llm_prompt: "infer_rce_subtype"
+      confidence_threshold: 0.7
+    help:
+      short: "Where the code or command executes"
+      long: |
+        Classify by the execution sink, for the right CWE:
+        - command_injection: input reaches an OS command (CWE-77/78).
+        - deserialization: untrusted data is deserialized into live objects (CWE-502).
+        - template_injection: input is evaluated by a server-side template engine (CWE-1336/94).
+        - upload_to_execution: an uploaded file is served or run as code (CWE-434).
+
+  - id: evidence_level
+    label: "Evidence level"
+    field_type: choice
+    options: [expression_evaluation_only, command_output, oob_callback]
+    inference:
+      from_evidence: [http_request, http_response, log_output]
+      llm_prompt: "infer_rce_evidence_level"
+      confidence_threshold: 0.7
+    help:
+      short: "How strongly execution was demonstrated"
+      long: |
+        Severity follows what the evidence proves, not the technique:
+        - expression_evaluation_only: the engine evaluated attacker input (e.g. an
+          arithmetic result returned), but no command output was shown.
+        - command_output: the response (or a captured log) contains the output of a
+          command or code you ran.
+        - oob_callback: an out-of-band interaction (DNS/HTTP to your own collector)
+          confirms execution for a blind case.
+        Expression evaluation alone caps the score; command output or an out-of-band
+        callback is full confirmed execution.
+
+  - id: impact_description
+    label: "Impact description"
+    field_type: long_text
+    editor: true
+    inference:
+      from_evidence: [http_request, http_response, screenshot]
+      llm_prompt: "draft_rce_impact"
+      confidence_threshold: 0.0
+      mode: suggest_only
+    help:
+      short: "What the execution gives an attacker?"
+      long: |
+        Describe the access obtained on the server, based only on what the
+        evidence shows. Use a harmless proof (an identity or version command, a
+        unique callback); do not read sensitive data, pivot, or persist.
+
+  - id: remediation
+    label: "Suggested remediation"
+    field_type: long_text
+    editor: true
+    is_required: false
+    help:
+      short: "How should the developers fix it? (optional)"
+      long: |
+        Suggest a concrete fix the developers can apply. Optional, but many
+        programs (HackerOne, Bugcrowd) expect a remediation section.
+      examples:
+        - "Never pass request input to a shell, evaluator or deserializer; use safe APIs and allow-lists."
+        - "Store uploads outside the web root and serve them as inert content, never execute them."
+
+required_evidence:
+  - type: http_request
+    description: "Request that triggers the execution"
+    required: true
+  - type: http_response
+    description: "Response showing the execution result (command output or the evaluated value)"
+    required: true
+  - type: log_output
+    description: "Out-of-band interaction log for a blind case (DNS/HTTP to your own collector)"
+    required: false
+    note: "Needed when the response carries no output; a unique token ties the callback to your test"
+
+severity_hints:
+  # A confirmed execution primitive shown only by expression evaluation caps at
+  # 7.5; command output or an out-of-band callback is full RCE (9.8).
+  default_cvss_v31: "AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+  lift_rules:
+    - metric: I
+      to: H
+      when: {evidence_level: [command_output, oob_callback]}
+      note: "demonstrated command output or an out-of-band callback confirming execution"
+    - metric: A
+      to: H
+      when: {evidence_level: [command_output, oob_callback]}
+      note: "demonstrated command output or an out-of-band callback confirming execution"
+  notes: |
+    Common adjustments:
+    - expression evaluation alone (e.g. an arithmetic result) stays at the 7.5 ceiling
+    - command output or an out-of-band callback lifts I and A to H (9.8)
+    - S:C only if execution demonstrably escapes its sandbox/container to another component
+
+never_accepted:
+  - when: {evidence_level: [expression_evaluation_only]}
+    message: >-
+      An evaluated expression (e.g. an arithmetic result) shows the sink reaches an
+      engine but not that commands run. Capture command output, or an out-of-band
+      callback with a unique token, to confirm execution and lift the score.
+
+verifier_focus:
+  - "Confirm the response reflects attacker-controlled execution, not a static or echoed value"
+  - "Confirm an out-of-band callback carries a token unique to this test"
+  - "Flag full-RCE (I:H/A:H) claims backed only by an evaluated expression"

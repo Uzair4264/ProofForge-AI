@@ -201,6 +201,20 @@ _CANNED: dict[str, dict] = {
         "confidence": 0.6,
         "reasoning": "Account access demonstrated; no-interaction takeover of any user is not shown.",
     },
+    # --- Remote code execution ---
+    "infer_rce_subtype": {
+        "value": "command_injection", "confidence": 0.8,
+        "reasoning": "Input reaches an OS command whose output returns in the response.",
+    },
+    "infer_rce_evidence_level": {
+        "value": "command_output", "confidence": 0.8,
+        "reasoning": "The response contains the output of a command that was run.",
+    },
+    "draft_rce_impact": {
+        "value": "An attacker can run commands on the server, shown by captured command output.",
+        "confidence": 0.6,
+        "reasoning": "Command output demonstrated; sandbox escape or persistence is not shown.",
+    },
     "verify_claim": {
         "supports": "true",
         "confidence": 0.9,

@@ -1,0 +1,24 @@
+PROMPT_ID: infer_rce_evidence_level
+You are an evidence analyzer for bug bounty reports.
+
+Your task: classify how strongly the evidence demonstrates execution.
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+- expression_evaluation_only: the engine evaluated attacker input (e.g. an
+  arithmetic result was returned), but no command output is shown.
+- command_output: the response or a captured log contains the output of a
+  command or code that was run.
+- oob_callback: an out-of-band interaction (DNS/HTTP to the tester's collector)
+  confirms execution for a blind case.
+Use "uncertain" if you cannot tell. Do not rate command_output from an echoed
+or static value that is not actually executed.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

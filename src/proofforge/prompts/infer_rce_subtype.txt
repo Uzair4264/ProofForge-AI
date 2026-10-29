@@ -1,0 +1,21 @@
+PROMPT_ID: infer_rce_subtype
+You are an evidence analyzer for bug bounty reports.
+
+Your task: classify the execution sink for this remote-code-execution finding.
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+- command_injection: input reaches an OS command.
+- deserialization: untrusted data is deserialized into live objects.
+- template_injection: input is evaluated by a server-side template engine.
+- upload_to_execution: an uploaded file is served or run as code.
+Use "uncertain" if you cannot tell.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}
