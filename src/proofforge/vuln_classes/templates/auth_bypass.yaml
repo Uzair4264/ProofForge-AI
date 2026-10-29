@@ -171,6 +171,11 @@ never_accepted:
       Without a clean-session reproduction, an "account takeover" may just be your
       own logged-in session. Repeat the access in a fresh, never-logged-in session
       (ideally a second account as the victim).
+  - when: {mechanism: [pre_account_takeover]}
+    message: >-
+      Pre-account-takeover (claiming an account before the real owner verifies) is
+      explicitly out of scope on some programs. Confirm the program accepts it, and
+      show the owner's later sign-in lands in the account you pre-claimed.
 
 verifier_focus:
   - "Confirm the access is to an account the tester does not own (or a clean second account)"

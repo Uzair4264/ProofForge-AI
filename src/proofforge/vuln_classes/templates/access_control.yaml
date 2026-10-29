@@ -99,6 +99,21 @@ required_fields:
         - documented_matrix: the program's docs or UI state the function is role-restricted.
         - none: no boundary shown (the finding may read as intended functionality).
 
+  - id: tenant_boundary
+    label: "Tenant boundary"
+    field_type: choice
+    options: [not_applicable, cross_tenant, same_tenant]
+    is_required: false
+    help:
+      short: "On a multi-tenant app, whose tenant did the escalation affect?"
+      long: |
+        Only relevant when the app is multi-tenant (separate orgs/workspaces):
+        - not_applicable: single-tenant app, or tenancy is not involved.
+        - cross_tenant: the escalation reached another tenant's data or functions (strongest).
+        - same_tenant: shown only within your own tenant/org.
+        Many multi-tenant programs reward cross-tenant impact and treat
+        same-tenant-only escalation as lower priority.
+
   - id: impact_description
     label: "Impact description"
     field_type: long_text
@@ -185,6 +200,11 @@ never_accepted:
       for your role. Show the boundary: the same request denied from your role
       before the bypass, the privileged role's matching response, or docs stating
       the function is role-restricted.
+  - when: {tenant_boundary: [same_tenant]}
+    message: >-
+      On a multi-tenant app, escalation shown only within your own tenant is often
+      lower priority. Many programs want cross-tenant impact; demonstrate reaching
+      another tenant's data or functions, or confirm same-tenant impact is in scope.
 
 verifier_focus:
   - "Confirm the two requests come from different privilege levels (not the same role twice)"
