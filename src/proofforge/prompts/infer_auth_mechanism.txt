@@ -1,0 +1,25 @@
+PROMPT_ID: infer_auth_mechanism
+You are an evidence analyzer for bug bounty reports.
+
+Your task: classify which authentication flow fails in this finding.
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+- password_reset: the recovery or reset flow.
+- mfa: the second-factor step.
+- oauth_oidc: an OAuth or OpenID Connect exchange.
+- jwt: a JSON Web Token's handling or verification.
+- saml: a SAML assertion exchange.
+- session_fixation: a session fixed before the victim logs in.
+- login_logic: the primary login decision.
+- pre_account_takeover: an account claimed before the real owner verifies.
+Use "uncertain" if you cannot tell.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

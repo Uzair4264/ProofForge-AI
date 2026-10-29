@@ -1,0 +1,178 @@
+vuln_class: auth_bypass
+display_name: "Authentication Bypass / Account Takeover"
+cwe: CWE-287
+subtypes:
+  - password_reset
+  - mfa
+  - oauth_oidc
+  - jwt
+  - saml
+  - session_fixation
+  - login_logic
+  - pre_account_takeover
+
+required_fields:
+  - id: affected_endpoint
+    label: "Affected endpoint URL"
+    field_type: url
+    validation: valid_url
+    inference:
+      from_evidence: [http_request]
+      llm_prompt: "infer_endpoint_from_request"
+      confidence_threshold: 0.8
+    help:
+      short: "The authentication endpoint the finding targets"
+      long: |
+        The login, reset, token, or callback endpoint where authentication is
+        established or verified incorrectly.
+      examples:
+        - "https://app.example.com/account/reset"
+        - "https://app.example.com/oauth/callback"
+
+  - id: outcome
+    label: "What the finding achieves"
+    field_type: choice
+    options: [full_ato_any_user, targeted_ato_interaction, unauthenticated_access, mfa_bypass_known_password, session_fixation, weakened_control_only]
+    inference:
+      from_evidence: [http_request, http_response]
+      llm_prompt: "infer_auth_outcome"
+      confidence_threshold: 0.7
+    help:
+      short: "The strongest result you actually demonstrated"
+      long: |
+        Severity follows the outcome, not the technique:
+        - full_ato_any_user: full access to any chosen account, no victim action.
+        - targeted_ato_interaction: full access to a victim's account, but it needs the victim to act.
+        - unauthenticated_access: reaching an authenticated area without an account.
+        - mfa_bypass_known_password: a second factor defeated when the password is already known.
+        - session_fixation: the victim is authenticated into a session the attacker holds.
+        - weakened_control_only: a control is weakened, but no account access is shown yet.
+
+  - id: mechanism
+    label: "Where authentication fails"
+    field_type: choice
+    options: [password_reset, mfa, oauth_oidc, jwt, saml, session_fixation, login_logic, pre_account_takeover]
+    inference:
+      from_evidence: [http_request, http_response]
+      llm_prompt: "infer_auth_mechanism"
+      confidence_threshold: 0.7
+    help:
+      short: "The authentication flow that fails"
+      long: |
+        Classify by the flow, for the right CWE from the A07 list (CWE-287
+        improper authentication; 288 alternate path; 306 missing authentication;
+        384 session fixation; 640 weak recovery; 620 unverified change; 345/347
+        unverified authenticity/signature). Never CWE-1211 (a category, not a
+        weakness).
+        - password_reset: the recovery or reset flow.
+        - mfa: the second-factor step.
+        - oauth_oidc / jwt / saml: the federated or token layer.
+        - session_fixation: a session fixed before login.
+        - login_logic: the primary login decision.
+        - pre_account_takeover: an account claimed before the real owner verifies.
+
+  - id: victim_interaction
+    label: "Victim interaction needed"
+    field_type: choice
+    options: [none, link_click, other]
+    help:
+      short: "What the victim must do for the attack to work"
+      long: |
+        - none: the attacker needs no action from the victim.
+        - link_click: the victim must open an attacker-supplied link.
+        - other: some other victim action is required (describe it in impact).
+        No victim action (with a clean-session confirmation) is what lets the
+        score drop the user-interaction requirement.
+
+  - id: clean_session_confirmed
+    label: "Clean-session confirmation"
+    field_type: choice
+    options: [confirmed, not_confirmed]
+    help:
+      short: "Did you confirm access from a fresh, unauthenticated session?"
+      long: |
+        Reproduce the access in a new browser or private window that was never
+        logged in as the victim, so the result is not just your own existing
+        session.
+        - confirmed: access was shown from a clean, separate session.
+        - not_confirmed: not shown (the finding may be self-takeover of your own account).
+
+  - id: impact_description
+    label: "Impact description"
+    field_type: long_text
+    editor: true
+    inference:
+      from_evidence: [http_request, http_response, screenshot]
+      llm_prompt: "draft_auth_impact"
+      confidence_threshold: 0.0
+      mode: suggest_only
+    help:
+      short: "Whose account, and what access was obtained?"
+      long: |
+        State whose account was accessed and what the access allows, based only
+        on what the evidence shows. Do not claim takeover of any user from a
+        single self-account test.
+
+  - id: remediation
+    label: "Suggested remediation"
+    field_type: long_text
+    editor: true
+    is_required: false
+    help:
+      short: "How should the developers fix it? (optional)"
+      long: |
+        Suggest a concrete fix the developers can apply. Optional, but many
+        programs (HackerOne, Bugcrowd) expect a remediation section.
+      examples:
+        - "Bind reset tokens to the requesting account and expire them on use."
+        - "Verify the second factor server-side on every authentication, not only in the client."
+
+required_evidence:
+  - type: http_request
+    description: "Request that establishes authenticated access without valid credentials for the account"
+    required: true
+  - type: http_response
+    description: "Response showing authenticated access to the account (a valid session or the account's own data)"
+    required: true
+  - type: screenshot
+    description: "The victim account reached from a clean, separate session"
+    required: false
+    note: "A clean-session reproduction is what distinguishes takeover from your own login"
+
+severity_hints:
+  # Account takeover needing the victim to act (8.1). No-interaction takeover
+  # from a clean session lifts UI to N.
+  default_cvss_v31: "AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N"
+  ceiling_tiers:
+    - when: {outcome: [weakened_control_only]}
+      ceiling: "AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"
+      note: "A weakened control with no demonstrated account access is low on its own"
+    - when: {outcome: [mfa_bypass_known_password]}
+      ceiling: "AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
+      note: "Defeating one factor gives full access only to someone who already has the password"
+  lift_rules:
+    - metric: UI
+      to: N
+      when: {victim_interaction: [none], clean_session_confirmed: [confirmed]}
+      note: "a demonstrated takeover needing no victim action, confirmed from a clean session"
+  notes: |
+    Common adjustments:
+    - UI:N only when no victim action is needed and access was shown from a clean session
+    - the mfa-known-password and weakened-control tiers already sit below the default
+
+never_accepted:
+  - when: {outcome: [weakened_control_only]}
+    message: >-
+      A weakened control on its own (a missing check, a reusable token) is usually
+      low or informational until it yields account access. Show the account you
+      reached and what it exposes.
+  - when: {clean_session_confirmed: [not_confirmed]}
+    message: >-
+      Without a clean-session reproduction, an "account takeover" may just be your
+      own logged-in session. Repeat the access in a fresh, never-logged-in session
+      (ideally a second account as the victim).
+
+verifier_focus:
+  - "Confirm the access is to an account the tester does not own (or a clean second account)"
+  - "Confirm the response shows an authenticated session, not just a 200 or a redirect"
+  - "Flag 'any user' takeover claims demonstrated only against the tester's own account"

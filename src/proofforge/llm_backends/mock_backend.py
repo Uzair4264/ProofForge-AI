@@ -187,6 +187,20 @@ _CANNED: dict[str, dict] = {
         "confidence": 0.6,
         "reasoning": "Privileged read demonstrated; wider admin control is not shown.",
     },
+    # --- Authentication bypass / account takeover ---
+    "infer_auth_outcome": {
+        "value": "targeted_ato_interaction", "confidence": 0.75,
+        "reasoning": "Access to a victim account is shown but it requires the victim to act.",
+    },
+    "infer_auth_mechanism": {
+        "value": "password_reset", "confidence": 0.8,
+        "reasoning": "The reset flow issues a token that is not bound to the requesting account.",
+    },
+    "draft_auth_impact": {
+        "value": "An attacker can take over a targeted user's account through the password-reset flow.",
+        "confidence": 0.6,
+        "reasoning": "Account access demonstrated; no-interaction takeover of any user is not shown.",
+    },
     "verify_claim": {
         "supports": "true",
         "confidence": 0.9,

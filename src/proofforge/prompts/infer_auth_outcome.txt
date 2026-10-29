@@ -1,0 +1,25 @@
+PROMPT_ID: infer_auth_outcome
+You are an evidence analyzer for bug bounty reports.
+
+Your task: classify the strongest authentication-bypass outcome the evidence
+actually demonstrates.
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+- full_ato_any_user: full access to any chosen account with no victim action.
+- targeted_ato_interaction: full access to a victim account that needs the victim to act.
+- unauthenticated_access: an authenticated area reached without an account.
+- mfa_bypass_known_password: a second factor defeated when the password is already known.
+- session_fixation: the victim is authenticated into a session the attacker holds.
+- weakened_control_only: a control is weakened but no account access is shown.
+Use "uncertain" if you cannot tell. Do not rate full takeover from a
+self-account test alone.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}
