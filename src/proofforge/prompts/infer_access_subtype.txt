@@ -1,0 +1,25 @@
+PROMPT_ID: infer_access_subtype
+You are an evidence analyzer for bug bounty reports.
+
+Your task: classify where the authorization check is absent or not enforced for
+this vertical access-control finding.
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+- missing_function_authz: the privileged function enforces no role check.
+- forced_browsing: a privileged URL is reachable without being linked for the role.
+- role_parameter_tampering: a role or permission field in the request is trusted.
+- mass_assignment: a privileged attribute is accepted on an editable object.
+- header_method_path_bypass: a gateway rule guards it but the origin does not re-check.
+- multi_step_skip: a later step is reached without the gated earlier step.
+- unauthenticated_function_access: the function needs no session at all.
+Use "uncertain" if you cannot tell.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

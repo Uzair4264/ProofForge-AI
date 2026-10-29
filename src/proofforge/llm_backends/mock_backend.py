@@ -173,6 +173,20 @@ _CANNED: dict[str, dict] = {
         "confidence": 0.6,
         "reasoning": "The redirect is demonstrated; no chained token theft is shown.",
     },
+    # --- Broken access control (vertical) ---
+    "infer_access_subtype": {
+        "value": "missing_function_authz", "confidence": 0.8,
+        "reasoning": "The privileged function returns data without enforcing a role check.",
+    },
+    "infer_access_action": {
+        "value": "admin_read", "confidence": 0.8,
+        "reasoning": "The response returns a privileged view; no change is shown.",
+    },
+    "draft_access_impact": {
+        "value": "A lower-privileged user can reach an admin-only function and read privileged data.",
+        "confidence": 0.6,
+        "reasoning": "Privileged read demonstrated; wider admin control is not shown.",
+    },
     "verify_claim": {
         "supports": "true",
         "confidence": 0.9,

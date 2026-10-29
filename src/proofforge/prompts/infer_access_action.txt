@@ -1,0 +1,24 @@
+PROMPT_ID: infer_access_action
+You are an evidence analyzer for bug bounty reports.
+
+Your task: classify the privileged action the response shows was performed.
+
+EVIDENCE:
+{evidence}
+
+Possible values: {options}
+- admin_read: read one privileged record or view.
+- bulk_read: read a privileged collection or export.
+- admin_write: change one privileged setting or record.
+- role_change: change a role, permission or entitlement.
+- admin_account_created: create a privileged account.
+- destructive: delete or disable data, users or systems.
+Use "uncertain" if you cannot tell. A 200 response alone does not prove a
+write, role change or deletion; the response must show the effect.
+
+Respond with a JSON object only:
+{{
+  "value": "<one of the values above, or 'uncertain'>",
+  "confidence": <0.0 to 1.0>,
+  "reasoning": "<one sentence>"
+}}

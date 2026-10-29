@@ -10,7 +10,7 @@ EVIDENCE:
 RESEARCHER DESCRIPTION:
 {description}
 
-Known classes: xss, ssrf, idor, csrf, sqli, info_disclosure, open_redirect.
+Known classes: xss, ssrf, idor, csrf, sqli, info_disclosure, open_redirect, access_control.
 
 Respond with a JSON object only:
 {{

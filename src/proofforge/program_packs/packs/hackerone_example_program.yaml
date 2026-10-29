@@ -17,6 +17,7 @@ scope:
     - "sqli"
     - "ssrf"
     - "idor"
+    - "access_control"
     - "csrf"
     - "rce"
     - "auth_bypass"

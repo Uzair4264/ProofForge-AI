@@ -1,0 +1,192 @@
+vuln_class: access_control
+display_name: "Broken Access Control (Vertical)"
+cwe: CWE-862
+subtypes:
+  - missing_function_authz
+  - forced_browsing
+  - role_parameter_tampering
+  - mass_assignment
+  - header_method_path_bypass
+  - multi_step_skip
+  - unauthenticated_function_access
+
+required_fields:
+  - id: affected_endpoint
+    label: "Affected endpoint URL"
+    field_type: url
+    validation: valid_url
+    inference:
+      from_evidence: [http_request]
+      llm_prompt: "infer_endpoint_from_request"
+      confidence_threshold: 0.8
+    help:
+      short: "The privileged endpoint a lower-privileged role reached"
+      long: |
+        The URL of the higher-privilege function that your role should not be
+        able to use. Vertical escalation is about reaching a function above your
+        role; reaching another user's object at the same function level is an
+        IDOR, report that class instead.
+      examples:
+        - "https://app.example.com/admin/users"
+        - "https://api.example.com/api/v1/admin/export"
+
+  - id: access_control_subtype
+    label: "How the check is missing or bypassed"
+    field_type: choice
+    options: [missing_function_authz, forced_browsing, role_parameter_tampering, mass_assignment, header_method_path_bypass, multi_step_skip, unauthenticated_function_access]
+    inference:
+      from_evidence: [http_request, http_response]
+      llm_prompt: "infer_access_subtype"
+      confidence_threshold: 0.7
+    help:
+      short: "Where the authorization check is absent or not enforced"
+      long: |
+        Classify by root cause (CWE-862 missing authorization; CWE-863 when a
+        check exists but decides wrongly):
+        - missing_function_authz: the privileged function enforces no role check.
+        - forced_browsing: a privileged URL is reachable without being linked for your role.
+        - role_parameter_tampering: a role/permission field in the request is trusted.
+        - mass_assignment: a privileged attribute is accepted on an object you may edit.
+        - header_method_path_bypass: a proxy/gateway rule guards the function but the
+          origin does not re-check it.
+        - multi_step_skip: a later step in a flow is reached without the gated earlier step.
+        - unauthenticated_function_access: the function needs no session at all.
+
+  - id: attacker_role
+    label: "Attacker's role"
+    field_type: string
+    validation: non_empty
+    help:
+      short: "The role you held when you reached the privileged function"
+      long: |
+        The privilege level of the account (or none) you used, in the target's
+        own terms. State it so the triager can see the role boundary you crossed.
+      examples:
+        - "standard authenticated user"
+        - "unauthenticated (no session)"
+        - "read-only support agent"
+
+  - id: privileged_action
+    label: "Privileged action reached"
+    field_type: choice
+    options: [admin_read, bulk_read, admin_write, role_change, admin_account_created, destructive]
+    inference:
+      from_evidence: [http_request, http_response]
+      llm_prompt: "infer_access_action"
+      confidence_threshold: 0.7
+    help:
+      short: "What the privileged function let you do"
+      long: |
+        Severity follows what the function does, demonstrated in the response:
+        - admin_read: read one privileged record or view.
+        - bulk_read: read a privileged collection or export.
+        - admin_write: change one privileged setting or record.
+        - role_change: change a role, permission or entitlement.
+        - admin_account_created: create a privileged account.
+        - destructive: delete or disable data, users or systems.
+
+  - id: role_boundary_proof
+    label: "Role boundary proof"
+    field_type: choice
+    options: [baseline_denied, admin_comparison, documented_matrix, none]
+    help:
+      short: "How you showed the function is actually restricted"
+      long: |
+        An escalation only stands if the function is genuinely off-limits to your
+        role. Show the boundary:
+        - baseline_denied: the same request from your role was denied before the bypass (strongest).
+        - admin_comparison: the privileged role's own response matches, confirming the function is theirs.
+        - documented_matrix: the program's docs or UI state the function is role-restricted.
+        - none: no boundary shown (the finding may read as intended functionality).
+
+  - id: impact_description
+    label: "Impact description"
+    field_type: long_text
+    editor: true
+    inference:
+      from_evidence: [http_request, http_response, screenshot]
+      llm_prompt: "draft_access_impact"
+      confidence_threshold: 0.0
+      mode: suggest_only
+    help:
+      short: "What the privileged access lets an attacker do?"
+      long: |
+        Describe the privileged capability obtained and its scale, based only on
+        what the response demonstrates. Do not claim full admin control from a
+        single read.
+
+  - id: remediation
+    label: "Suggested remediation"
+    field_type: long_text
+    editor: true
+    is_required: false
+    help:
+      short: "How should the developers fix it? (optional)"
+      long: |
+        Suggest a concrete fix the developers can apply. Optional, but many
+        programs (HackerOne, Bugcrowd) expect a remediation section.
+      examples:
+        - "Enforce a server-side role check on every privileged function, not only in the UI."
+        - "Derive the acting role from the session on the server; never trust a role field in the request."
+
+required_evidence:
+  - type: http_request
+    description: "Request performing the privileged action as the lower-privileged role"
+    required: true
+  - type: http_response
+    description: "Response showing the privileged action succeeded"
+    required: true
+  - type: http_request
+    description: "Baseline: the same request from your role denied, or the privileged role's own request"
+    required: false
+    note: "Without a second role, the access difference cannot be checked (distinct_identities)"
+  - type: screenshot
+    description: "Role context for the accounts used"
+    required: false
+
+severity_hints:
+  # One privileged read reachable by an authenticated lower-privileged role
+  # (4.3), the same starting point as a horizontal IDOR read.
+  default_cvss_v31: "AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N"
+  ceiling_tiers:
+    - when: {privileged_action: [admin_write]}
+      ceiling: "AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N"
+      note: "Changing one privileged setting touches confidentiality and integrity, not whole systems"
+  lift_rules:
+    - metric: C
+      to: H
+      when: {privileged_action: [bulk_read, role_change, admin_account_created]}
+      note: "a demonstrated privileged bulk read, role change or admin account creation"
+    - metric: I
+      to: H
+      when: {privileged_action: [role_change, admin_account_created, destructive]}
+      note: "a demonstrated role change, admin account creation or destructive action"
+    - metric: A
+      to: H
+      when: {privileged_action: [destructive]}
+      note: "a demonstrated destructive action (data, users or systems disabled)"
+    - metric: PR
+      to: N
+      when: {access_control_subtype: [unauthenticated_function_access]}
+      demonstrated: false
+      note: "the privileged function is reachable with no session"
+  notes: |
+    Common adjustments:
+    - PR:N when the function needs no authentication at all
+    - C:H for a demonstrated privileged bulk read, role change or admin account
+    - I:H / A:H only for a demonstrated change or destructive action
+
+evidence_checks: [distinct_identities]
+
+never_accepted:
+  - when: {role_boundary_proof: [none]}
+    message: >-
+      With no role boundary shown, reaching the function may be intended behaviour
+      for your role. Show the boundary: the same request denied from your role
+      before the bypass, the privileged role's matching response, or docs stating
+      the function is role-restricted.
+
+verifier_focus:
+  - "Confirm the two requests come from different privilege levels (not the same role twice)"
+  - "Confirm the privileged action actually took effect in the response, not just a 200"
+  - "Flag 'full admin control' claims backed by only a single privileged read"
